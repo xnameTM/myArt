@@ -11,7 +11,10 @@ export default function Layout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false
+        headerShown: false,
+        tabBarStyle: {
+            backgroundColor: 'black'
+        }
       }}>
       <Tabs.Screen
         name="explore"

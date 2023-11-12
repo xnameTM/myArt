@@ -36,8 +36,9 @@ function RootNavigation() {
     return (
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack>
-                <Stack.Screen name="(tabs)" options={{headerShown: false}}/>
-                <Stack.Screen name="modal" options={{presentation: 'modal'}}/>
+                <Stack.Screen name="(tabs)" options={{headerShown: false, headerStyle: {backgroundColor: '#000'}}}/>
+                <Stack.Screen name="modal" options={{presentation: 'modal', headerStyle: {backgroundColor: '#000'}}}/>
+                <Stack.Screen name="details" options={{headerShown: false}}/>
             </Stack>
         </ThemeProvider>
     );

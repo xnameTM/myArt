@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
-import EditScreenInfo from '../../components/EditScreenInfo';
-import { Text, View } from '../../components/Themed';
+import EditScreenInfo from '../../components/templates/EditScreenInfo';
+import { Text, View } from '../../components/templates/Themed';
 
 export default function SettingsTab() {
     return (

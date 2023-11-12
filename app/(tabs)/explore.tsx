@@ -1,27 +1,18 @@
 import {
-  ActivityIndicator,
+  ActivityIndicator, Animated, Image,
   RefreshControl,
   SafeAreaView,
   ScrollView,
-  StyleSheet,
-  Image,
-  Pressable, TouchableOpacity
+  StyleSheet, TouchableOpacity
 } from 'react-native';
-import { Text, View } from '../../components/Themed';
-import { useCallback, useEffect, useState } from 'react';
+import { Text, View } from '../../components/templates/Themed';
+import {useCallback, useEffect, useState} from 'react';
 import { Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import {Ionicons} from "@expo/vector-icons";
 import ExploreCard from "../../components/ExploreCard";
+import DynamicHeader from "../../components/DynamicHeader";
+import {useRouter} from "expo-router";
 
-function uuidv4() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
-    .replace(/[xy]/g, function (c) {
-      const r = Math.random() * 16 | 0,
-        v = c == 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-}
+const headerHeight = 60;
 
 export default function AllTab() {
   const [page, setPage] = useState<number>(1);
@@ -30,6 +21,7 @@ export default function AllTab() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [loadingNextPage, setLoadingNextPage] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const loadData = async () => {
     try {
@@ -42,10 +34,10 @@ export default function AllTab() {
         try {
           const {width, height} = await (await fetch(`https://www.artic.edu/iiif/2/${item.image_id}`)).json();
 
-          const imageWidth = Dimensions.get('window').width
+          const imageWidth = Dimensions.get('window').width - 20;
           const imageHeight = Math.floor(height / width * imageWidth);
 
-          return {image: `https://www.artic.edu/iiif/2/${item.image_id}/full/${imageWidth},${imageHeight}/0/default.jpg`, height: imageHeight, id: uuidv4(), ...item};
+          return {image: `https://www.artic.edu/iiif/2/${item.image_id}/full/${imageWidth},${imageHeight}/0/default.jpg`, height: imageHeight, ...item};
         } catch {
           return null;
         }
@@ -87,12 +79,19 @@ export default function AllTab() {
         </View>
     );
 
+  const scrollY = new Animated.Value(0);
+
   return (
-    <SafeAreaView>
+    <SafeAreaView style={{position: 'relative'}}>
+      <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10}}>
+        <Text style={{fontSize: 20, fontWeight: '600'}}>Explore</Text>
+        <TouchableOpacity>
+          <Image source={{uri: 'https://paczaizm.pl/content/wp-content/uploads/andrzej-duda-gruby-grubas-przerobka-faceapp-twarz.jpg'}} style={{width: 44, height: 44, borderRadius: 10}}/>
+        </TouchableOpacity>
+      </DynamicHeader>
       <ScrollView
-          style={{height: '100%'}}
+          style={{height: '100%', top: -headerHeight, paddingTop: headerHeight, position: 'relative'}}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.container}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -101,22 +100,23 @@ export default function AllTab() {
           }
           indicatorStyle='white'
           onScroll={({nativeEvent}) => {
-            if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height * 4) {
-              handleLoadMore();
-            }
-          }}
-          scrollEventThrottle={100}
-      >
+            scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
 
+            if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height * 4 && data.length > 0)
+              handleLoadMore();
+          }}
+          scrollEventThrottle={16}
+          stickyHeaderHiddenOnScroll={true}
+      >
         {error ? (
             <View style={{paddingTop: 50, flex: 1, alignItems: 'center'}}>
               <Text style={{fontSize: 20, color: 'white'}}>{error}</Text>
             </View>
         ) : (
             <>
-              <View>
+              <View style={{flex: 1, gap: 20}}>
                 {data.map((item, index) => (
-                    <ExploreCard item={item} index={index}/>
+                    <ExploreCard item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
                 ))}
               </View>
               {!refreshing ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
