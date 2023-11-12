@@ -5,7 +5,7 @@ import React, {useEffect} from "react";
 import Animated, {Easing, useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated";
 
 interface Props {
-    filters: {name: string, icon: string}[];
+    filters: {name: string, icon: string, key: string}[];
     currentFilter: string;
     setCurrentFilter: React.Dispatch<React.SetStateAction<string>>;
     isVisible: boolean;
@@ -16,7 +16,6 @@ export function SearchFilter({filters, currentFilter, setCurrentFilter, isVisibl
     const anim = useSharedValue(isVisible ? 1 : 0);
 
     useEffect(() => {
-        console.log('test')
         anim.value = withTiming(isVisible ? 1 : 0, {
             duration: 400,
             easing: Easing.bezier(0.31, -0.02, 0, 1.03)
@@ -26,13 +25,14 @@ export function SearchFilter({filters, currentFilter, setCurrentFilter, isVisibl
     const containerStyle = useAnimatedStyle(() => ({
         transform: [
             {scale: anim.value},
-            {translateX: (1 - anim.value) * 220}
+            {translateX: anim.value * -90},
+            {translateY: anim.value * 40}
         ],
-        opacity: anim.value
+        opacity: anim.value / 2 + .5
     }))
 
     return (
-        <Animated.View style={[{position: 'absolute', top: '90%', right: '40%', height: '100%'}, containerStyle]}>
+        <Animated.View style={[{position: 'absolute', top: 0, right: -95, height: '100%'}, containerStyle]}>
             <View>
                 <View style={{overflow: 'hidden', borderTopLeftRadius: 10, borderTopRightRadius: 10}}>
                     <BlurView intensity={20} style={styles.desc}>
@@ -42,12 +42,12 @@ export function SearchFilter({filters, currentFilter, setCurrentFilter, isVisibl
                 <View style={{width: 220}}>
                     {filters.map((f, index) => (
                         <Pressable key={index} onPress={() => {
-                            setCurrentFilter(f.name);
+                            setCurrentFilter(f.key);
                             setVisible(false);
                         }}>
                             <View style={index + 1 == filters.length ? styles.btnLastWrapper : {}}>
                                 <BlurView intensity={20} style={index + 1 == filters.length ? styles.btnLast : styles.btn}>
-                                    {currentFilter == f.name ? <Ionicons name='checkmark' size={24} style={styles.checkmark} color='white'/> : ''}
+                                    {currentFilter == f.key ? <Ionicons name='checkmark' size={24} style={styles.checkmark} color='white'/> : ''}
                                     <Text style={styles.btnText}>{f.name}</Text>
                                     {/* @ts-ignore */}
                                     <Ionicons name={f.icon} style={styles.btnIcon} size={24} color='white'/>

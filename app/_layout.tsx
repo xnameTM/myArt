@@ -38,6 +38,7 @@ function RootNavigation() {
             <Stack>
                 <Stack.Screen name="(tabs)" options={{headerShown: false, headerStyle: {backgroundColor: '#000'}}}/>
                 <Stack.Screen name="modal" options={{presentation: 'modal', headerStyle: {backgroundColor: '#000'}}}/>
+                <Stack.Screen name="search-artworks" options={{headerShown: false}}/>
                 <Stack.Screen name="details" options={{headerShown: false}}/>
             </Stack>
         </ThemeProvider>

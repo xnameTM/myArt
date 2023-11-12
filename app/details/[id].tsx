@@ -77,7 +77,7 @@ export default function ExploreDetailsPage() {
             setImage(String(params.image))
 
         if (params.height)
-            setImage(String(params.height))
+            setHeight(String(params.height))
 
         if (loading || refreshing)
             loadLocalData();
@@ -163,7 +163,10 @@ export default function ExploreDetailsPage() {
                     {(data.subject_titles ?? []).length > 0 ? (
                         <View style={{flex: 1, gap: 5, alignItems: 'flex-start', flexDirection: 'row', maxWidth: '100%', flexWrap: 'wrap'}}>
                             {(data.subject_titles ?? []).map((hashtag: string, index: number) => (
-                                <TouchableOpacity style={{backgroundColor: '#333', paddingVertical: 2, paddingHorizontal: 4, borderRadius: 3}} key={index}>
+                                <TouchableOpacity onPress={() => {
+                                    // @ts-ignore
+                                    router.push(`search-artworks?${new URLSearchParams({filter: 'default', text: hashtag})}`)
+                                }} style={{backgroundColor: '#333', paddingVertical: 2, paddingHorizontal: 4, borderRadius: 3}} key={index}>
                                     <Text>
                                         #{shortenText(hashtag, 2)}
                                     </Text>
@@ -174,7 +177,7 @@ export default function ExploreDetailsPage() {
                     <ExploreDetailsItem name='Artist' value={data.artist_title} pressable={true} link={`/artists/${data.artist_id}`}/>
                     <ExploreDetailsItem name='Title' value={data.title} pressable={false} link=''/>
                     <ExploreDetailsItem name='Place' value={data.place_of_origin} pressable={false} link=''/>
-                    <ExploreDetailsItem name='Date' value={data.date_display} pressable={true} link={`/(tabs)/search?${new URLSearchParams({date: data.date_display})}`}/>
+                    <ExploreDetailsItem name='Date' value={data.date_display} pressable={true} link={`/search-artworks?${new URLSearchParams({filter: 'date_display', text: data.date_display})}`}/>
                     <ExploreDetailsItem name='Medium' value={data.medium_display} pressable={false} link=''/>
                     <ExploreDetailsItem name='Dimensions' value={data.dimensions} pressable={false} link=''/>
                     <ExploreDetailsItem name='Credit Line' value={data.credit_line} pressable={false} link=''/>

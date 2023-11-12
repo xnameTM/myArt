@@ -21,20 +21,6 @@ export default function Layout() {
         options={{
           title: 'Explore',
           tabBarIcon: ({color, focused}) => <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color}/>
-          // headerRight: () => (
-          //   <Link href="/modal" asChild>
-          //     <Pressable>
-          //       {({pressed}) => (
-          //         <FontAwesome
-          //           name="info-circle"
-          //           size={25}
-          //           color={Colors[colorScheme ?? 'light'].text}
-          //           style={{marginRight: 15, opacity: pressed ? 0.5 : 1}}
-          //         />
-          //       )}
-          //     </Pressable>
-          //   </Link>
-          // )
         }}
       />
       <Tabs.Screen
@@ -55,7 +41,7 @@ export default function Layout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({color, focused}) => <Ionicons name={focused ? 'settings' : 'settings-sharp'} size={24} color={color}/>
+          tabBarIcon: ({color, focused}) => <Ionicons name={focused ? 'settings-sharp' : 'settings-outline'} size={24} color={color}/>
         }}
       />
     </Tabs>

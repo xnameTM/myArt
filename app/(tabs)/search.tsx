@@ -8,7 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Text
+  Text, FlatList
 } from 'react-native';
 
 import DynamicHeader from "../../components/DynamicHeader";
@@ -19,25 +19,24 @@ import {useRouter} from "expo-router";
 import {SearchFilter} from "../../components/SearchFilter";
 
 const headerHeight: number = 50;
+
 const filters = [
-  {'name': 'Title', 'icon': 'map-outline'},
-  {'name': 'Artists', 'icon': 'people-outline'},
-  {'name': 'Places', 'icon': 'map-outline'},
-  {'name': 'Artwork Type', 'icon': 'reader-outline'},
-  {'name': 'Date', 'icon': 'calendar-outline'},
-  {'name': 'Color', 'icon': 'color-filter-outline'},
-  {'name': 'Styles', 'icon': 'brush-outline'},
-  {'name': 'Subjects', 'icon': 'easel-outline'},
-  {'name': 'Classifications', 'icon': 'layers-outline'},
-  {'name': 'Medium', 'icon': 'image-outline'},
-  {'name': 'Departments', 'icon': 'file-tray-full-outline'}
+  {'name': 'Default', 'icon': 'star-outline', 'key': 'default'},
+  {'name': 'Title', 'icon': 'text-outline', 'key': 'title'},
+  {'name': 'Artists', 'icon': 'people-outline', 'key': 'artist_title'},
+  {'name': 'Places', 'icon': 'map-outline', 'key': 'place_of_origin'},
+  {'name': 'Date', 'icon': 'calendar-outline', 'key': 'date_display'},
+  {'name': 'Style', 'icon': 'brush-outline', 'key': 'style_title'},
+  {'name': 'Classification', 'icon': 'layers-outline', 'key': 'classification_title'},
+  {'name': 'Medium', 'icon': 'image-outline', 'key': 'medium_display'},
+  {'name': 'Department', 'icon': 'file-tray-full-outline', 'key': 'department_title'},
 ];
 
 export default function SearchTab() {
   const router = useRouter();
   const scrollY = new Anim.Value(0);
   const textInputRef = useRef<TextInput>(null);
-  const width = Dimensions.get('window').width;
+  const {width, height} = Dimensions.get('window');
   const searchBarFocus = useSharedValue<number>(0);
   const [page, setPage] = useState<number>(1);
   const [data, setData] = useState<any[]>([]);
@@ -45,8 +44,9 @@ export default function SearchTab() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [loadingNextPage, setLoadingNextPage] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<string>('Title');
+  const [filter, setFilter] = useState<string>('default');
   const [isFilterVisible, setFilterVisible] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState<string>('');
 
   const loadData = async () => {
     try {
@@ -97,6 +97,11 @@ export default function SearchTab() {
     opacity: 1 - searchBarFocus.value
   }))
 
+  const submitEditing = () => {
+    // @ts-ignore
+    router.push(`/search-artworks?${new URLSearchParams({filter, text: searchText})}`)
+  }
+
   if (loading)
     return (
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -126,6 +131,8 @@ export default function SearchTab() {
                   color: 'white',
                   width: '100%'
                 }}
+                value={searchText}
+                onChangeText={(text) => setSearchText(text)}
                 onFocus={() => {
                   scrollY.setValue(0);
                   searchBarFocus.value = withTiming(1, {
@@ -140,6 +147,7 @@ export default function SearchTab() {
                     easing: Easing.bezier(0.31, -0.02, 0, 1.03)
                   })
                 }}
+                onSubmitEditing={() => submitEditing()}
             />
           </Animated.View>
 
@@ -152,14 +160,27 @@ export default function SearchTab() {
             </TouchableOpacity>
           </Animated.View>
           <Animated.View style={[{position: 'absolute', top: 5, right: 10, width: headerHeight - 20, height: headerHeight - 10}, animatedFilterButton]}>
-            <TouchableOpacity onPress={() => setFilterVisible(value => !value)} style={{width: '100%', height: '100%', flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 2}}>
+            <TouchableOpacity onPress={() => {
+              setFilterVisible(value => !value);
+              scrollY.setValue(0)
+            }} style={{width: '100%', height: '100%', flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 2}}>
               <Ionicons name='ellipsis-horizontal' size={26} color='white'/>
             </TouchableOpacity>
             <SearchFilter filters={filters} currentFilter={filter} setCurrentFilter={setFilter} isVisible={isFilterVisible} setVisible={setFilterVisible}/>
           </Animated.View>
         </DynamicHeader>
-        <ScrollView
-            style={{height: '100%', top: -headerHeight, paddingTop: headerHeight, position: 'relative'}}
+        <FlatList
+            contentContainerStyle={{gap: 3}}
+            columnWrapperStyle={{gap: 3}}
+            data={data}
+            numColumns={3}
+            renderItem={({item}) => (
+                <TouchableOpacity onPress={() => router.push(`/details/${item.id}`)}>
+                  <Image source={{uri: item.image}} style={{width: (width - 6) / 3, height: (width - 6) / 3}}/>
+                </TouchableOpacity>
+            )}
+            keyExtractor={({id}) => id}
+            style={{height: height - 115, top: -headerHeight, paddingTop: headerHeight, position: 'relative'}}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -170,23 +191,20 @@ export default function SearchTab() {
             scrollEnabled={!isFilterVisible}
             indicatorStyle='white'
             onScroll={({nativeEvent}) => {
-              scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
+              if (!isFilterVisible)
+                scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
 
               if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height && data.length > 0)
                 handleLoadMore();
             }}
             scrollEventThrottle={16}
             stickyHeaderHiddenOnScroll={true}
-        >
-          <View style={{flex: 4, marginVertical: 10, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 3}}>
-            {data.map(({image, id}, index) => (
-                <TouchableOpacity key={index} onPress={() => router.push(`/details/${id}`)}>
-                  <Image source={{uri: image}} style={{width: (width - 6) / 3, height: (width - 6) / 3}}/>
-                </TouchableOpacity>
-            ))}
-          </View>
-          {!refreshing && !loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
-        </ScrollView>
+            ListFooterComponent={(
+                <View>
+                  {!refreshing && !loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
+                </View>
+            )}
+        />
       </SafeAreaView>
   );
 }

@@ -6,7 +6,7 @@ import {
   StyleSheet, TouchableOpacity
 } from 'react-native';
 import { Text, View } from '../../components/templates/Themed';
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import { Dimensions } from 'react-native';
 import ExploreCard from "../../components/ExploreCard";
 import DynamicHeader from "../../components/DynamicHeader";
@@ -22,6 +22,7 @@ export default function AllTab() {
   const [loadingNextPage, setLoadingNextPage] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const loadData = async () => {
     try {
@@ -84,12 +85,18 @@ export default function AllTab() {
   return (
     <SafeAreaView style={{position: 'relative'}}>
       <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10}}>
-        <Text style={{fontSize: 20, fontWeight: '600'}}>Explore</Text>
+        <TouchableOpacity onPress={() => {
+          if (scrollViewRef.current)
+            scrollViewRef.current.scrollTo({y: 0})
+        }}>
+          <Text style={{fontSize: 20, fontWeight: '600'}}>Explore</Text>
+        </TouchableOpacity>
         <TouchableOpacity>
           <Image source={{uri: 'https://paczaizm.pl/content/wp-content/uploads/andrzej-duda-gruby-grubas-przerobka-faceapp-twarz.jpg'}} style={{width: 44, height: 44, borderRadius: 10}}/>
         </TouchableOpacity>
       </DynamicHeader>
       <ScrollView
+          ref={scrollViewRef}
           style={{height: '100%', top: -headerHeight, paddingTop: headerHeight, position: 'relative'}}
           showsVerticalScrollIndicator={false}
           refreshControl={

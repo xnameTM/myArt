@@ -6,8 +6,10 @@ import {useState} from 'react';
 import {TapGestureHandler} from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import {formatDesciption, shortenText} from "../utils/Utils";
+import {useRouter} from "expo-router";
 
 export default function ExploreCard({item, handleCardPress}: {item: any, handleCardPress: () => void}) {
+    const router = useRouter();
     const [liked, setLiked] = useState<boolean>(false);
     const [favourited, setFavourited] = useState<boolean>(false);
 
@@ -67,7 +69,10 @@ export default function ExploreCard({item, handleCardPress}: {item: any, handleC
             {(item.subject_titles ?? []).length > 0 ? (
                 <View style={{flex: 1, gap: 5, alignItems: 'flex-start', flexDirection: 'row', maxWidth: '100%', flexWrap: 'wrap'}}>
                     {(item.subject_titles ?? []).map((hashtag: string, index: number) => (
-                        <TouchableOpacity style={{backgroundColor: '#333', paddingVertical: 2, paddingHorizontal: 4, borderRadius: 3}} key={index}>
+                        <TouchableOpacity onPress={() => {
+                            // @ts-ignore
+                            router.push(`search-artworks?${new URLSearchParams({filter: 'default', text: hashtag})}`)
+                        }} style={{backgroundColor: '#333', paddingVertical: 2, paddingHorizontal: 4, borderRadius: 3}} key={index}>
                             <Text>
                                 #{shortenText(hashtag, 2)}
                             </Text>
