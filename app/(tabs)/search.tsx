@@ -23,8 +23,8 @@ const headerHeight: number = 50;
 const filters = [
   {'name': 'Default', 'icon': 'star-outline', 'key': 'default'},
   {'name': 'Title', 'icon': 'text-outline', 'key': 'title'},
-  {'name': 'Artists', 'icon': 'people-outline', 'key': 'artist_title'},
-  {'name': 'Places', 'icon': 'map-outline', 'key': 'place_of_origin'},
+  {'name': 'Artist', 'icon': 'people-outline', 'key': 'artist_title'},
+  {'name': 'Place', 'icon': 'map-outline', 'key': 'place_of_origin'},
   {'name': 'Date', 'icon': 'calendar-outline', 'key': 'date_display'},
   {'name': 'Style', 'icon': 'brush-outline', 'key': 'style_title'},
   {'name': 'Classification', 'icon': 'layers-outline', 'key': 'classification_title'},
@@ -175,7 +175,7 @@ export default function SearchTab() {
             data={data}
             numColumns={3}
             renderItem={({item}) => (
-                <TouchableOpacity onPress={() => router.push(`/details/${item.id}`)}>
+                <TouchableOpacity key={item.id} onPress={() => router.push(`/details/${item.id}`)}>
                   <Image source={{uri: item.image}} style={{width: (width - 6) / 3, height: (width - 6) / 3}}/>
                 </TouchableOpacity>
             )}

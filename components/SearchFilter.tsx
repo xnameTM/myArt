@@ -36,7 +36,7 @@ export function SearchFilter({filters, currentFilter, setCurrentFilter, isVisibl
             <View>
                 <View style={{overflow: 'hidden', borderTopLeftRadius: 10, borderTopRightRadius: 10}}>
                     <BlurView intensity={20} style={styles.desc}>
-                        <Text style={styles.descText}>Filters</Text>
+                        <Text style={styles.descText}>Filter by</Text>
                     </BlurView>
                 </View>
                 <View style={{width: 220}}>
