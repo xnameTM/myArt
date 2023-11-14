@@ -2,16 +2,80 @@ import {Text, View} from './templates/Themed';
 import {Image, Pressable, TouchableOpacity} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import {Ionicons} from '@expo/vector-icons';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {TapGestureHandler} from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import {formatDesciption, shortenText} from "../utils/Utils";
-import {useRouter} from "expo-router";
+import {useFocusEffect, useRouter} from "expo-router";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ExploreCard({item, handleCardPress}: {item: any, handleCardPress: () => void}) {
     const router = useRouter();
     const [liked, setLiked] = useState<boolean>(false);
     const [favourited, setFavourited] = useState<boolean>(false);
+
+    const loadLiked = async () => {
+        const likedData = await AsyncStorage.getItem('liked');
+
+        if (!likedData) return;
+        const likedArray: string[] = await JSON.parse(likedData);
+
+        setLiked(likedArray.includes(String(item.id)));
+    }
+
+    const loadFavourited = async () => {
+        const favouritedData = await AsyncStorage.getItem('favourited');
+
+        if (!favouritedData) return;
+        const favouritedArray: string[] = await JSON.parse(favouritedData);
+
+        setFavourited(favouritedArray.includes(String(item.id)));
+    }
+
+    useEffect(() => {
+        loadLiked()
+        loadFavourited()
+    }, []);
+
+    useFocusEffect(() => {
+        AsyncStorage.getItem('reload-explore-card').then((item) => {
+            if (!item) return;
+
+            if (item == 'true') {
+                loadLiked();
+                loadFavourited();
+                AsyncStorage.setItem('reload-explore-card', 'false');
+            }
+        })
+    });
+
+    const saveLiked = async () => {
+        const likedArray: string[] = JSON.parse(await AsyncStorage.getItem('liked') ?? '[]');
+
+        if (liked) {
+            if (likedArray.includes(String(item.id)))
+                await AsyncStorage.setItem('liked', JSON.stringify(likedArray.filter(f => f != String(item.id))));
+        } else {
+            if (!likedArray.includes(String(item.id))) {
+                likedArray.push(String(item.id));
+                await AsyncStorage.setItem('liked', JSON.stringify(likedArray));
+            }
+        }
+    }
+
+    const saveFavourited = async () => {
+        const favouritedArray: string[] = JSON.parse(await AsyncStorage.getItem('favourited') ?? '[]');
+
+        if (favourited) {
+            if (favouritedArray.includes(String(item.id)))
+                await AsyncStorage.setItem('favourited', JSON.stringify(favouritedArray.filter(f => f != String(item.id))));
+        } else {
+            if (!favouritedArray.includes(String(item.id))) {
+                favouritedArray.push(String(item.id));
+                await AsyncStorage.setItem('favourited', JSON.stringify(favouritedArray));
+            }
+        }
+    }
 
     return (
         <View style={{paddingHorizontal: 10, flex: 1, gap: 8}}>
@@ -22,6 +86,7 @@ export default function ExploreCard({item, handleCardPress}: {item: any, handleC
                     onEnded={() => {
                         setLiked(true);
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                        saveLiked()
                     }}
                 >
                     <Image source={{uri: item.image}} style={{width: '100%', height: item.height, borderRadius: 10}}/>
@@ -36,12 +101,13 @@ export default function ExploreCard({item, handleCardPress}: {item: any, handleC
             </View>
             <View style={{flex: 1, flexDirection: 'row'}}>
                 <View style={{flex: 1, flexDirection: 'row', gap: 10}}>
-                    <TouchableOpacity>
-                        <Ionicons name={liked ? 'heart' : 'heart-outline'} onPress={() => {
-                            if (!liked)
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                            setLiked(prev => !prev)
-                        }} size={30} color={liked ? 'red' : 'white'}/>
+                    <TouchableOpacity onPress={() => {
+                        if (!liked)
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                        setLiked(prev => !prev)
+                        saveLiked()
+                    }}>
+                        <Ionicons name={liked ? 'heart' : 'heart-outline'} size={30} color={liked ? 'red' : 'white'}/>
                     </TouchableOpacity>
                     <TouchableOpacity>
                         <Ionicons name='chatbubble-outline' size={30} color='white'/>
@@ -55,11 +121,13 @@ export default function ExploreCard({item, handleCardPress}: {item: any, handleC
                     <Ionicons name={favourited ? 'bookmark' : 'bookmark-outline'} onPress={() => {
                         if (!favourited)
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                        setFavourited(prev => !prev)
+
+                        setFavourited(prev => !prev);
+                        saveFavourited();
                     }} size={30} color={favourited ? '#EFAD29' : 'white'}/>
                 </TouchableOpacity>
             </View>
-            <Text>Likes: 6376</Text>
+            {/*<Text>Likes: 6376</Text>*/}
             {!item.artist_title && !item.description ? '' : (
                 <Text style={{color: 'white'}}>
                     <Text style={{fontWeight: '600'}}>{item.artist_title ? item.artist_title + ' ' : ''}</Text>
