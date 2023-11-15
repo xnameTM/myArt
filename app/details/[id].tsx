@@ -159,7 +159,7 @@ export default function ExploreDetailsPage() {
                     </View>
 
                     <Text style={{fontWeight: '600', fontSize: 18}}>{data.title ?? 'Untitled'}</Text>
-                    <Text>Likes: 6376</Text>
+                    {/*<Text>Likes: 6376</Text>*/}
                     {(data.subject_titles ?? []).length > 0 ? (
                         <View style={{flex: 1, gap: 5, alignItems: 'flex-start', flexDirection: 'row', maxWidth: '100%', flexWrap: 'wrap'}}>
                             {(data.subject_titles ?? []).map((hashtag: string, index: number) => (
