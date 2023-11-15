@@ -15,6 +15,7 @@ import {Ionicons} from '@expo/vector-icons';
 import * as Haptics from "expo-haptics";
 import {formatDesciption, shortenText} from "../../utils/Utils";
 import {TapGestureHandler} from "react-native-gesture-handler";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 function ExploreDetailsItem({name, value, pressable = false, link}: {name: string, value: string | null, pressable: boolean, link: any}) {
     const screenWidth = Dimensions.get('window').width;
@@ -39,7 +40,7 @@ export default function ExploreDetailsPage() {
     const [height, setHeight] = useState<string>('');
     const router = useRouter();
     const params = useLocalSearchParams();
-    const id = params.id;
+    const id = params.id as string;
 
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -82,6 +83,65 @@ export default function ExploreDetailsPage() {
         if (loading || refreshing)
             loadLocalData();
     }, [refreshing]);
+
+    useEffect(() => {
+        const loadLiked = async () => {
+            const likedData = await AsyncStorage.getItem('liked');
+
+            if (!likedData) return;
+            const likedArray: string[] = await JSON.parse(likedData);
+
+            setLiked(likedArray.includes(String(id)));
+        }
+
+        const loadFavourited = async () => {
+            const favouritedData = await AsyncStorage.getItem('favourited');
+
+            if (!favouritedData) return;
+            const favouritedArray: string[] = await JSON.parse(favouritedData);
+
+            setFavourited(favouritedArray.includes(String(id)));
+        }
+
+        loadLiked();
+        loadFavourited();
+    }, []);
+
+    const requireExploreCardReload = () => {
+        AsyncStorage.setItem('reload-explore-card', 'true');
+    }
+
+    const saveLiked = async () => {
+        const likedArray: string[] = JSON.parse(await AsyncStorage.getItem('liked') ?? '[]');
+
+        if (liked) {
+            if (likedArray.includes(String(id)))
+                await AsyncStorage.setItem('liked', JSON.stringify(likedArray.filter(f => f != String(id))));
+        } else {
+            if (!likedArray.includes(String(id))) {
+                likedArray.push(String(id));
+                await AsyncStorage.setItem('liked', JSON.stringify(likedArray));
+            }
+        }
+
+        requireExploreCardReload()
+    }
+
+    const saveFavourited = async () => {
+        const favouritedArray: string[] = JSON.parse(await AsyncStorage.getItem('favourited') ?? '[]');
+
+        if (favourited) {
+            if (favouritedArray.includes(String(id)))
+                await AsyncStorage.setItem('favourited', JSON.stringify(favouritedArray.filter(f => f != String(id))));
+        } else {
+            if (!favouritedArray.includes(String(id))) {
+                favouritedArray.push(String(id));
+                await AsyncStorage.setItem('favourited', JSON.stringify(favouritedArray));
+            }
+        }
+
+        requireExploreCardReload()
+    }
 
     if (loading || error)
         return (
@@ -128,18 +188,21 @@ export default function ExploreDetailsPage() {
                         onEnded={() => {
                             setLiked(true);
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                            saveLiked()
                         }}
                     >
                         <Image source={{uri: image == 'undefined' ? '' : image}} style={{width: '100%', height: Number(height == 'undefined' ? '0' : height), borderRadius: 10}}/>
                     </TapGestureHandler>
                     <View style={{flex: 1, flexDirection: 'row'}}>
                         <View style={{flex: 1, flexDirection: 'row', gap: 10}}>
-                            <TouchableOpacity>
-                                <Ionicons name={liked ? 'heart' : 'heart-outline'} onPress={() => {
-                                    if (!liked)
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                                    setLiked(prev => !prev)
-                                }} size={30} color={liked ? 'red' : 'white'}/>
+                            <TouchableOpacity onPress={() => {
+                                if (!liked)
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+
+                                setLiked(prev => !prev)
+                                saveLiked()
+                            }}>
+                                <Ionicons name={liked ? 'heart' : 'heart-outline'} size={30} color={liked ? 'red' : 'white'}/>
                             </TouchableOpacity>
                             <TouchableOpacity>
                                 <Ionicons name='chatbubble-outline' size={30} color='white'/>
@@ -154,6 +217,7 @@ export default function ExploreDetailsPage() {
                                 if (!favourited)
                                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
                                 setFavourited(prev => !prev)
+                                saveFavourited()
                             }} size={30} color={favourited ? '#EFAD29' : 'white'}/>
                         </TouchableOpacity>
                     </View>

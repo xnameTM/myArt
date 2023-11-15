@@ -8,14 +8,14 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import {Stack, useLocalSearchParams, useRouter} from "expo-router";
+import {Stack, useFocusEffect, useLocalSearchParams, useRouter} from "expo-router";
 import {ExternalLink} from "../../components/templates/ExternalLink";
 import React, {useCallback, useEffect, useState} from "react";
 import ExploreCard from "../../components/ExploreCard";
 import {Ionicons} from "@expo/vector-icons";
 import {shortenText} from "../../utils/Utils";
 
-const fields = 'id,title,artist_title,date_display,image_id';
+const fields = 'id,title,artist_title,date_display,image_id,description,subject_titles';
 
 export default function SearchScreen() {
     const router = useRouter();

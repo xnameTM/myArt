@@ -1,8 +1,7 @@
 import {
-  ActivityIndicator, Animated, Image,
+  ActivityIndicator, Animated, FlatList, Image,
   RefreshControl,
   SafeAreaView,
-  ScrollView,
   StyleSheet, TouchableOpacity
 } from 'react-native';
 import { Text, View } from '../../components/templates/Themed';
@@ -10,7 +9,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import { Dimensions } from 'react-native';
 import ExploreCard from "../../components/ExploreCard";
 import DynamicHeader from "../../components/DynamicHeader";
-import {useRouter} from "expo-router";
+import {useFocusEffect, useRouter} from "expo-router";
 
 const headerHeight = 60;
 
@@ -22,7 +21,6 @@ export default function AllTab() {
   const [loadingNextPage, setLoadingNextPage] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const scrollViewRef = useRef<ScrollView>(null);
 
   const loadData = async () => {
     try {
@@ -85,51 +83,57 @@ export default function AllTab() {
   return (
     <SafeAreaView style={{position: 'relative'}}>
       <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10}}>
-        <TouchableOpacity onPress={() => {
-          if (scrollViewRef.current)
-            scrollViewRef.current.scrollTo({y: 0})
-        }}>
+        <TouchableOpacity>
           <Text style={{fontSize: 20, fontWeight: '600'}}>Explore</Text>
         </TouchableOpacity>
         <TouchableOpacity>
           <Image source={{uri: 'https://paczaizm.pl/content/wp-content/uploads/andrzej-duda-gruby-grubas-przerobka-faceapp-twarz.jpg'}} style={{width: 44, height: 44, borderRadius: 10}}/>
         </TouchableOpacity>
       </DynamicHeader>
-      <ScrollView
-          ref={scrollViewRef}
-          style={{height: '100%', top: -headerHeight, paddingTop: headerHeight, position: 'relative'}}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-            />
-          }
-          indicatorStyle='white'
-          onScroll={({nativeEvent}) => {
-            scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
-
-            if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height * 4 && data.length > 0)
-              handleLoadMore();
-          }}
-          scrollEventThrottle={16}
-          stickyHeaderHiddenOnScroll={true}
-      >
         {error ? (
             <View style={{paddingTop: 50, flex: 1, alignItems: 'center'}}>
               <Text style={{fontSize: 20, color: 'white'}}>{error}</Text>
             </View>
         ) : (
-            <>
-              <View style={{flex: 1, gap: 20}}>
-                {data.map((item, index) => (
+            // <>
+            //   <View style={{flex: 1, gap: 20}}>
+            //     {data.map((item, index) => (
+            //         <ExploreCard item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
+            //     ))}
+            //   </View>
+            //   {!refreshing ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
+            // </>
+            <FlatList
+                contentContainerStyle={{gap: 20}}
+                style={{height: '100%', top: -headerHeight, paddingTop: headerHeight, position: 'relative'}}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                  <RefreshControl
+                      refreshing={refreshing}
+                      onRefresh={onRefresh}
+                  />
+                }
+                indicatorStyle='white'
+                onScroll={({nativeEvent}) => {
+                  scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
+
+                  if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height * 4 && data.length > 0)
+                    handleLoadMore();
+                }}
+                scrollEventThrottle={16}
+                stickyHeaderHiddenOnScroll={true}
+                data={data}
+                renderItem={({item, index}) => (
                     <ExploreCard item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
-                ))}
-              </View>
-              {!refreshing ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
-            </>
+                )}
+                keyExtractor={({id}) => id}
+                ListFooterComponent={(
+                    <View>
+                      {!refreshing && !loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
+                    </View>
+                )}
+            />
         )}
-      </ScrollView>
     </SafeAreaView>
   );
 }
