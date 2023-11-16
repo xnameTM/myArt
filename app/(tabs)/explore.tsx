@@ -104,6 +104,7 @@ export default function AllTab() {
             //   {!refreshing ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
             // </>
             <FlatList
+                removeClippedSubviews={true}
                 contentContainerStyle={{gap: 20}}
                 style={{height: '100%', top: -headerHeight, paddingTop: headerHeight, position: 'relative'}}
                 showsVerticalScrollIndicator={false}

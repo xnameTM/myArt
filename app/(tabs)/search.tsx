@@ -170,6 +170,8 @@ export default function SearchTab() {
           </Animated.View>
         </DynamicHeader>
         <FlatList
+            removeClippedSubviews={true}
+            keyboardDismissMode='on-drag'
             contentContainerStyle={{gap: 3}}
             columnWrapperStyle={{gap: 3}}
             data={data}
