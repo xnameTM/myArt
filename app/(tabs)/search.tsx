@@ -19,19 +19,20 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import {Stack, useRouter} from 'expo-router';
 import { SearchFilter } from '../../components/SearchFilter';
+import {getLanguage} from "../../utils/Settings";
 
 const headerHeight: number = 50;
 
 const filters = [
-  {'name': 'Default', 'icon': 'star-outline', 'key': 'default'},
-  {'name': 'Title', 'icon': 'text-outline', 'key': 'title'},
-  {'name': 'Artist', 'icon': 'people-outline', 'key': 'artist_title'},
-  {'name': 'Place', 'icon': 'map-outline', 'key': 'place_of_origin'},
-  {'name': 'Date', 'icon': 'calendar-outline', 'key': 'date_display'},
-  {'name': 'Style', 'icon': 'brush-outline', 'key': 'style_title'},
-  {'name': 'Classification', 'icon': 'layers-outline', 'key': 'classification_title'},
-  {'name': 'Medium', 'icon': 'image-outline', 'key': 'medium_display'},
-  {'name': 'Department', 'icon': 'file-tray-full-outline', 'key': 'department_title'},
+  {'en': 'Default', 'pl': 'Domyślne', 'icon': 'star-outline', 'key': 'default'},
+  {'en': 'Title', 'pl': 'Tytuł', 'icon': 'text-outline', 'key': 'title'},
+  {'en': 'Artist', 'pl': 'Artysta', 'icon': 'people-outline', 'key': 'artist_title'},
+  {'en': 'Place', 'pl': 'Miejsce', 'icon': 'map-outline', 'key': 'place_of_origin'},
+  {'en': 'Date', 'pl': 'Data', 'icon': 'calendar-outline', 'key': 'date_display'},
+  {'en': 'Style', 'pl': 'Styl', 'icon': 'brush-outline', 'key': 'style_title'},
+  {'en': 'Classification', 'pl': 'Klasyfikacja', 'icon': 'layers-outline', 'key': 'classification_title'},
+  {'en': 'Medium', 'pl': 'Medium', 'icon': 'image-outline', 'key': 'medium_display'},
+  {'en': 'Department', 'pl': 'Dział', 'icon': 'file-tray-full-outline', 'key': 'department_title'},
 ];
 
 export default function SearchTab() {
@@ -50,12 +51,14 @@ export default function SearchTab() {
   const [isFilterVisible, setFilterVisible] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>('');
   const colorScheme = useColorScheme();
+  const [language, setLanguage] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
-      const newData : {data: any[]} = await (await fetch('https://api.artic.edu/api/v1/artworks?' + new URLSearchParams({
+      const newData : {data: {id: number, image_id: string}[]} = await (await fetch('https://api.artic.edu/api/v1/artworks?' + new URLSearchParams({
         page: String(page),
-        limit: '24'
+        limit: '24',
+        field: 'id,image_id'
       }))).json();
 
       setData(data.concat(newData.data.map((item) => ({image: `https://www.artic.edu/iiif/2/${item.image_id}/full/843,/0/default.jpg`, ...item}))));
@@ -70,6 +73,15 @@ export default function SearchTab() {
   };
 
   useEffect(() => {
+    if (!language) {
+      getLanguage().then(lang => {
+        setLanguage(lang);
+        if (loading || refreshing || loadingNextPage)
+          loadData();
+      });
+      return;
+    }
+
     if (loading || refreshing || loadingNextPage)
       loadData()
   }, [loading, refreshing, loadingNextPage]);
@@ -120,7 +132,7 @@ export default function SearchTab() {
                 ref={textInputRef}
                 keyboardType='web-search'
                 enablesReturnKeyAutomatically={true}
-                placeholder='Search'
+                placeholder={language == 'Polish' ? 'Wyszukaj' : 'Search'}
                 inputMode='search'
                 placeholderTextColor='#888'
                 selectionColor='#888'
@@ -159,7 +171,7 @@ export default function SearchTab() {
               if (textInputRef.current)
                 textInputRef.current.blur();
             }} style={{height: headerHeight, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8}}>
-              <Text style={{color: colorScheme === 'dark' ? 'white' : 'black', fontSize: 18}}>Cancel</Text>
+              <Text style={{color: colorScheme === 'dark' ? 'white' : 'black', fontSize: 18}}>{language == 'Polish' ? 'Anuluj' : 'Cancel'}</Text>
             </TouchableOpacity>
           </Animated.View>
           <Animated.View style={[{position: 'absolute', top: 5, right: 10, width: headerHeight - 20, height: headerHeight - 10}, animatedFilterButton]}>

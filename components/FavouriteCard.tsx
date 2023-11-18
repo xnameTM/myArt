@@ -1,11 +1,12 @@
 import {Alert, Dimensions, Image, Pressable, ScrollView, Text, useColorScheme, View} from "react-native";
-import {useCallback, useRef, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import {Ionicons} from "@expo/vector-icons";
 import {formatDesciption, shortenText} from "../utils/Utils";
 import {useFocusEffect} from "expo-router";
+import {getLanguage, setLanguage} from "../utils/Settings";
 
 const snapOffsets = [0, 100, 200];
-export default function FavouriteCard({item, removeFavourite, handlePress}: {item: any, removeFavourite: () => void, handlePress: () => void}) {
+export default function FavouriteCard({item, removeFavourite, handlePress, language}: {item: any, removeFavourite: () => void, handlePress: () => void, language: string}) {
     const {width} = Dimensions.get('window');
     const scrollViewRef = useRef<ScrollView>(null);
     const [outOfPage, setOutOfPage] = useState<boolean>(false);
@@ -41,9 +42,9 @@ export default function FavouriteCard({item, removeFavourite, handlePress}: {ite
                     handlePress();
                 } else if (nativeEvent.contentOffset.x > snapOffsets[2] + 90) {
                     setOutOfPage(true);
-                    Alert.alert('Are you sure?', undefined, [
+                    Alert.alert(language === 'Polish' ? 'Jesteś pewien?' : 'Are you sure?', undefined, [
                         {
-                            text: 'Yes',
+                            text: language === 'Polish' ? 'Tak' : 'Yes',
                             onPress: () => {
                                 removeFavourite();
                                 setOutOfPage(false);
@@ -51,8 +52,11 @@ export default function FavouriteCard({item, removeFavourite, handlePress}: {ite
                             style: 'default'
                         },
                         {
-                            text: 'No',
-                            onPress: () => setOutOfPage(false),
+                            text: language === 'Polish' ? 'Nie' : 'No',
+                            onPress: () => {
+                                recenter();
+                                setOutOfPage(false);
+                            },
                             style: 'cancel'
                         }
                     ])
@@ -64,7 +68,7 @@ export default function FavouriteCard({item, removeFavourite, handlePress}: {ite
                     recenter()
                     handlePress()
                 }} style={{height: 100, width: 500, backgroundColor: '#1ed760', justifyContent: 'center', alignItems: 'center', paddingLeft: 400, left: -400, position: 'absolute'}}>
-                    <Text style={{color: '#fff', fontSize: 16, fontWeight: '500'}}>See</Text>
+                    <Text style={{color: '#fff', fontSize: 16, fontWeight: '500'}}>{language === 'Polish' ? 'Zobacz' : 'See'}</Text>
                 </Pressable>
                 <Pressable onPress={handlePress} style={{backgroundColor: colorScheme === 'dark' ? '#111' : '#eee', padding: 10, marginLeft: 100, width: width - 20, flexDirection: 'row', gap: 10}}>
                     <Image source={{uri: `https://www.artic.edu/iiif/2/${item.image_id}/full/843,/0/default.jpg`}} style={{width: 80, height: 80, borderRadius: 6}}/>
@@ -74,17 +78,21 @@ export default function FavouriteCard({item, removeFavourite, handlePress}: {ite
                     </View>
                 </Pressable>
                 <Pressable onPress={() => {
-                    Alert.alert('Are you sure?', undefined, [
+                    Alert.alert(language === 'Polish' ? 'Jesteś pewien?' : 'Are you sure?', undefined, [
                         {
-                            text: 'Yes',
+                            text: language === 'Polish' ? 'Tak' : 'Yes',
                             onPress: () => {
                                 removeFavourite();
+                                setOutOfPage(false);
                             },
                             style: 'default'
                         },
                         {
-                            text: 'No',
-                            onPress: () => {},
+                            text: language === 'Polish' ? 'Nie' : 'No',
+                            onPress: () => {
+                                recenter();
+                                setOutOfPage(false);
+                            },
                             style: 'cancel'
                         }
                     ])

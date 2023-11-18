@@ -16,6 +16,7 @@ import * as Haptics from "expo-haptics";
 import {formatDesciption, shortenText} from "../../utils/Utils";
 import {TapGestureHandler} from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {getLanguage} from "../../utils/Settings";
 
 function ExploreDetailsItem({name, value, pressable = false, link}: {name: string, value: string | null, pressable: boolean, link: any}) {
     const screenWidth = Dimensions.get('window').width;
@@ -36,6 +37,8 @@ function ExploreDetailsItem({name, value, pressable = false, link}: {name: strin
     );
 }
 
+const disabledIds = ['image_id', 'title', 'subject_titles', 'artist_title', 'date_display', 'main_reference_number', 'copyright_notice', 'artist_id']
+
 export default function ExploreDetailsPage() {
     const [image, setImage] = useState<string>('');
     const [height, setHeight] = useState<string>('');
@@ -49,8 +52,11 @@ export default function ExploreDetailsPage() {
     const [error, setError] = useState<string | null>(null);
     const [liked, setLiked] = useState<boolean>(false);
     const [favourited, setFavourited] = useState<boolean>(false);
+    const [language, setLanguage] = useState<string | null>(null);
 
-    const loadLocalData = async () => {
+    const loadLocalData = async (lang: string | null = null) => {
+        lang = lang ?? language ?? 'English';
+
         try {
             const response: {data: any} = await (await fetch(`https://api.artic.edu/api/v1/artworks/${id}?fields=image_id,title,description,subject_titles,artist_title,place_of_origin,date_display,medium_display,dimensions,credit_line,main_reference_number,copyright_notice,artist_id`)).json();
 
@@ -64,7 +70,26 @@ export default function ExploreDetailsPage() {
                 setHeight(String(imageHeight));
             }
 
-            setData(response.data)
+            if (lang == 'Polish') {
+                await Promise.all(Object.keys(response.data).map(async (key) => {
+                    if (disabledIds.includes(key)) return;
+
+                    const {status, message}: {status: string, message: string} = await (await fetch("https://script.google.com/macros/s/AKfycbxFO-bcrgAssi32N0EqtetVA-GnvWNk4ky6SO0pkpl_VF3osPr_8x54FqeDveQv3KrB/exec", {
+                        method: "POST",
+                        body: JSON.stringify({
+                            source_lang: "auto",
+                            target_lang: "pl",
+                            text: String(response.data[key] ?? '')
+                        }),
+                        headers: {"Content-Type": "application/json"}
+                    })).json();
+
+                    if (status == 'success')
+                        response.data[key] = message;
+                }));
+            }
+
+            setData(response.data);
             setError(null);
         } catch {
             setError('Unable to see details of this art...');
@@ -75,6 +100,22 @@ export default function ExploreDetailsPage() {
     }
 
     useEffect(() => {
+        if (!language) {
+            getLanguage().then(lang => {
+                if (params.image)
+                    setImage(String(params.image))
+
+                if (params.height)
+                    setHeight(String(params.height))
+
+                if (loading || refreshing)
+                    loadLocalData(lang);
+
+                setLanguage(lang);
+            });
+            return;
+        }
+
         if (params.image)
             setImage(String(params.image))
 
@@ -269,15 +310,16 @@ export default function ExploreDetailsPage() {
                             ))}
                         </View>
                     ) : null}
-                    <ExploreDetailsItem name='Artist' value={data.artist_title} pressable={true} link={`/artists/${data.artist_id}`}/>
-                    <ExploreDetailsItem name='Title' value={data.title} pressable={false} link=''/>
-                    <ExploreDetailsItem name='Place' value={data.place_of_origin} pressable={true} link={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.place_of_origin)}`}/>
-                    <ExploreDetailsItem name='Date' value={data.date_display} pressable={true} link={`/search-artworks?${new URLSearchParams({filter: 'date_display', text: data.date_display})}`}/>
-                    <ExploreDetailsItem name='Medium' value={data.medium_display} pressable={false} link=''/>
-                    <ExploreDetailsItem name='Dimensions' value={data.dimensions} pressable={false} link=''/>
-                    <ExploreDetailsItem name='Credit Line' value={data.credit_line} pressable={false} link=''/>
-                    <ExploreDetailsItem name='Reference Number' value={data.main_reference_number} pressable={false} link=''/>
-                    <ExploreDetailsItem name='Copyright' value={data.copyright_notice} pressable={false} link=''/>
+                    {/*<ExploreDetailsItem name={language == 'Polish' ? 'Artysta' : 'Artist'} value={data.artist_title} pressable={true} link={`/artists/${data.artist_id}`}/>*/}
+                    <ExploreDetailsItem name={language == 'Polish' ? 'Artysta' : 'Artist'} value={data.artist_title} pressable={false} link=''/>
+                    <ExploreDetailsItem name={language == 'Polish' ? 'Tytuł' : 'Title'} value={data.title} pressable={false} link=''/>
+                    <ExploreDetailsItem name={language == 'Polish' ? 'Miejsce' : 'Place'} value={data.place_of_origin} pressable={true} link={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.place_of_origin)}`}/>
+                    <ExploreDetailsItem name={language == 'Polish' ? 'Data' : 'Date'} value={data.date_display} pressable={true} link={`/search-artworks?${new URLSearchParams({filter: 'date_display', text: data.date_display})}`}/>
+                    <ExploreDetailsItem name={language == 'Polish' ? 'Medium' : 'Medium'} value={data.medium_display} pressable={false} link=''/>
+                    <ExploreDetailsItem name={language == 'Polish' ? 'Wymiary' : 'Dimensions'} value={data.dimensions} pressable={false} link=''/>
+                    <ExploreDetailsItem name={language == 'Polish' ? 'Linia kredytowa' : 'Credit Line'} value={data.credit_line} pressable={false} link=''/>
+                    <ExploreDetailsItem name={language == 'Polish' ? 'Numer referencyjny' : 'Reference Number'} value={data.main_reference_number} pressable={false} link=''/>
+                    <ExploreDetailsItem name={language == 'Polish' ? 'Prawo autorskie' : 'Copyright'} value={data.copyright_notice} pressable={false} link=''/>
                 </View>
             </ScrollView>
         </SafeAreaView>

@@ -12,6 +12,7 @@ import * as Haptics from 'expo-haptics';
 import {formatDesciption, shortenText} from "../utils/Utils";
 import {useFocusEffect, useRouter} from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {getLanguage} from "../utils/Settings";
 
 export enum CardPlacementType {
     Explore,
@@ -22,6 +23,7 @@ export default function ExploreCard({item, handleCardPress, placementType}: {ite
     const router = useRouter();
     const [liked, setLiked] = useState<boolean>(false);
     const [favourited, setFavourited] = useState<boolean>(false);
+    const [data, setData] = useState<any>();
     const doubleTapRef = useRef();
     const colorScheme = useColorScheme();
 
@@ -54,6 +56,17 @@ export default function ExploreCard({item, handleCardPress, placementType}: {ite
 
         setFavourited(favouritedArray.includes(String(item.id)));
     }
+
+    useEffect(() => {
+        const translateLanguage = async () => {
+            const language = await getLanguage();
+            const disabledIds = ['id', 'title', 'artist_title', 'image_id'];
+
+
+        }
+
+        translateLanguage()
+    }, []);
 
     useEffect(() => {
         loadLiked()

@@ -11,17 +11,20 @@ import DynamicHeader from "../../components/DynamicHeader";
 import {Stack, useFocusEffect, useRouter} from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import FavouriteCard from "../../components/FavouriteCard";
+import {getLanguage, setLanguage} from "../../utils/Settings";
 
 const headerHeight = 60;
 const itemsPerPage = 15;
+const disabledIds = ['id', 'image_id', 'title']
 
-export default function AllTab() {
+export default function FavouriteTab() {
     const scrollY = new Animated.Value(0);
     const {height} = Dimensions.get('window');
     const router = useRouter();
     const [page, setPage] = useState<number>(1);
     const [data, setData] = useState<any[]>([]);
     const colorScheme = useColorScheme();
+    const [language, setLanguage] = useState<string | null>(null);
     const [dataStates, setDataStates] = useState<{
         error: string | null,
         loading: boolean,
@@ -34,7 +37,9 @@ export default function AllTab() {
         loadingNextPage: false
     });
 
-    const loadData = async () => {
+    const loadData = async (lang: string | null = null) => {
+        lang = lang ?? language ?? 'English';
+
         try {
             const ids: string[] = JSON.parse(await AsyncStorage.getItem('favourited') ?? '[]').filter((_ : any, index: number) => {
                 return index >= (page - 1) * itemsPerPage && index < page * itemsPerPage
@@ -51,7 +56,28 @@ export default function AllTab() {
             }
 
             const newData: any[] = (await Promise.all(ids.map(async (id) => {
-                const {data}: {data: any[]} = await (await fetch(`https://api.artic.edu/api/v1/artworks/${id}?field=id,image_id,title,description`)).json();
+                const {data}: {data: {id: number, image_id: string, title: string, description: string}} = await (await fetch(`https://api.artic.edu/api/v1/artworks/${id}?field=id,image_id,title,description`)).json();
+
+                if (lang == 'Polish') {
+                    await Promise.all(Object.keys(data).map(async (key) => {
+                        if (disabledIds.includes(key)) return;
+
+                        const {status, message}: {status: string, message: string} = await (await fetch("https://script.google.com/macros/s/AKfycbxFO-bcrgAssi32N0EqtetVA-GnvWNk4ky6SO0pkpl_VF3osPr_8x54FqeDveQv3KrB/exec", {
+                            method: "POST",
+                            body: JSON.stringify({
+                                source_lang: "auto",
+                                target_lang: "pl",
+                                // @ts-ignore
+                                text: String(data[key] ?? '')
+                            }),
+                            headers: {"Content-Type": "application/json"}
+                        })).json();
+
+                        if (status == 'success')
+                            // @ts-ignore
+                            data[key] = message;
+                    }))
+                }
 
                 return data;
             }))).filter(item => item != null);
@@ -74,6 +100,15 @@ export default function AllTab() {
     };
 
     useEffect(() => {
+        if (!language) {
+            getLanguage().then(lang => {
+                if (dataStates.loading || dataStates.refreshing || dataStates.loadingNextPage)
+                    loadData(lang);
+                setLanguage(lang);
+            });
+            return;
+        }
+
         if (dataStates.loading || dataStates.refreshing || dataStates.loadingNextPage)
             loadData();
     }, [dataStates.refreshing, dataStates.loadingNextPage]);
@@ -91,9 +126,14 @@ export default function AllTab() {
 
     useFocusEffect(() => {
         AsyncStorage.getItem('reload-favourite-card')
-            .then((ids: string | null): string[] => JSON.parse(ids ?? '[]'))
-            .then((ids: string[]) => {
-                if (ids.length > 0) {
+            .then((ids: string | null): (string | null)[] => JSON.parse(ids ?? '[]'))
+            .then((ids) => {
+                if (ids.includes(null)) {
+                    AsyncStorage.setItem('reload-favourite-card', JSON.stringify(ids.filter(id => id != null)));
+                    setPage(1);
+                    setData([]);
+                    loadData();
+                } else if (ids.length > 0) {
                     AsyncStorage.setItem('reload-favourite-card', '[]');
                     if (!dataStates.loading && !dataStates.refreshing && !dataStates.loadingNextPage) {
                         setPage(1);
@@ -136,11 +176,11 @@ export default function AllTab() {
         <SafeAreaView style={{position: 'relative'}}>
             <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10}}>
                 <TouchableOpacity onPress={onRefresh}>
-                    <Text style={{fontSize: 20, fontWeight: '600', color: colorScheme === 'dark' ? 'white' : 'black'}}>Favourite</Text>
+                    <Text style={{fontSize: 20, fontWeight: '600', color: colorScheme === 'dark' ? 'white' : 'black'}}>{language === 'Polish' ? 'Ulubione' : 'Favourite'}</Text>
                 </TouchableOpacity>
             </DynamicHeader>
             {dataStates.refreshing ? (
-                <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', height: height}}>
+                <View style={{justifyContent: 'center', alignItems: 'center', height: height - 175}}>
                     <ActivityIndicator color={colorScheme === 'dark' ? 'white' : 'black'} size='large'/>
                 </View>
             ) : dataStates.error ? (
@@ -180,7 +220,7 @@ export default function AllTab() {
                         data={data}
                         renderItem={({item, index}) => (
                             // <ExploreCard item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
-                            <FavouriteCard item={item} removeFavourite={() => removeFavourite(String(item.id))} handlePress={() => router.push(`/details/${item.id}`)}/>
+                            <FavouriteCard language={language ?? 'English'} item={item} removeFavourite={() => removeFavourite(String(item.id))} handlePress={() => router.push(`/details/${item.id}`)}/>
                         )}
                         keyExtractor={({id}) => id}
                         ListFooterComponent={(

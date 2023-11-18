@@ -1,8 +1,9 @@
-import {Pressable, StyleSheet, Text, useColorScheme, View} from "react-native";
+import {Alert, Pressable, StyleSheet, Text, useColorScheme, View} from "react-native";
 import {Ionicons} from "@expo/vector-icons";
 import { BlurView } from 'expo-blur';
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import Animated, {Easing, useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated";
+import {getLanguage} from "../utils/Settings";
 
 interface Props {
     filters: {name: string, key: string}[];
@@ -11,9 +12,10 @@ interface Props {
     isVisible: boolean;
     setVisible: React.Dispatch<React.SetStateAction<boolean>>;
     label: string;
+    language: string | null;
 }
 
-export default function DropdownSelect({filters, currentFilter, setCurrentFilter, isVisible, setVisible, label}: Props) {
+export default function DropdownSelect({filters, currentFilter, setCurrentFilter, isVisible, setVisible, label, language}: Props) {
     const anim = useSharedValue(isVisible ? 1 : 0);
     const colorSheme = useColorScheme();
 
@@ -34,7 +36,7 @@ export default function DropdownSelect({filters, currentFilter, setCurrentFilter
     }))
 
     return (
-        <Animated.View style={[{position: 'absolute', top: 0, right: -95, height: '100%'}, containerStyle]}>
+        <Animated.View style={[{position: 'absolute', top: 0, right: -95, height: '100%', zIndex: 1}, containerStyle]}>
             <View>
                 <View style={{overflow: 'hidden', borderTopLeftRadius: 10, borderTopRightRadius: 10}}>
                     <BlurView intensity={20} style={{...styles.desc, backgroundColor: colorSheme === 'dark' ? '#222222cc' : 'rgba(239,239,239,0.8)'}}>
@@ -44,8 +46,16 @@ export default function DropdownSelect({filters, currentFilter, setCurrentFilter
                 <View style={{width: 220}}>
                     {filters.map((f, index) => (
                         <Pressable key={index} onPress={() => {
-                            setCurrentFilter(f.key);
-                            setVisible(false);
+                            Alert.alert(
+                                f.key === 'Polish' ? 'Zmiana języka' : 'The language change',
+                                f.key === 'Polish' ? 'całkowicie będzie widoczna po restarcie aplikacji.' : 'will be fully visible after restarting the application.', [{
+                                text: 'Ok',
+                                onPress: () => {
+                                    setCurrentFilter(f.key);
+                                    setVisible(false);
+                                },
+                                style: 'default'
+                            }]);
                         }}>
                             <View style={index + 1 == filters.length ? styles.btnLastWrapper : {}}>
                                 <BlurView intensity={20} style={{...(index + 1 == filters.length ? styles.btnLast : styles.btn), backgroundColor: colorSheme === 'dark' ? '#222222cc' : 'rgba(239,239,239,0.8)'}}>

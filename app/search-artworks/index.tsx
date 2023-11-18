@@ -13,6 +13,9 @@ import React, {useCallback, useEffect, useState} from "react";
 import ExploreCard, {CardPlacementType} from "../../components/ExploreCard";
 import {Ionicons} from "@expo/vector-icons";
 import {shortenText} from "../../utils/Utils";
+import {getLanguage} from "../../utils/Settings";
+
+const disabledIds = ['id', 'title', 'artisi_title', 'subject_titles', 'image_id'];
 
 export default function SearchScreen() {
     const router = useRouter();
@@ -24,10 +27,13 @@ export default function SearchScreen() {
     const [loadingNextPage, setLoadingNextPage] = useState<boolean>(false);
     const [total, setTotal] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [language, setLanguage] = useState<string | null>(null);
     const {height} = Dimensions.get('window');
     const colorScheme = useColorScheme();
 
-    const loadData = async () => {
+    const loadData = async (lang: string | null = null) => {
+        lang = lang ?? language ?? 'English';
+
         try {
             const obj = {};
             // @ts-ignore
@@ -48,6 +54,25 @@ export default function SearchScreen() {
 
                     const imageWidth = Dimensions.get('window').width - 20;
                     const imageHeight = Math.floor(height / width * imageWidth);
+
+                    if (lang == 'Polish') {
+                        await Promise.all(Object.keys(item).map(async (key) => {
+                            if (disabledIds.includes(key)) return;
+
+                            const {status, message}: {status: string, message: string} = await (await fetch("https://script.google.com/macros/s/AKfycbxFO-bcrgAssi32N0EqtetVA-GnvWNk4ky6SO0pkpl_VF3osPr_8x54FqeDveQv3KrB/exec", {
+                                method: "POST",
+                                body: JSON.stringify({
+                                    source_lang: "auto",
+                                    target_lang: "pl",
+                                    text: String(item[key] ?? '')
+                                }),
+                                headers: {"Content-Type": "application/json"}
+                            })).json();
+
+                            if (status == 'success')
+                                item[key] = message;
+                        }));
+                    }
 
                     return {image: `https://www.artic.edu/iiif/2/${item.image_id}/full/${imageWidth},${imageHeight}/0/default.jpg`, height: imageHeight, ...item};
                 } catch {
@@ -76,8 +101,17 @@ export default function SearchScreen() {
             }
         }
 
+        if (!language) {
+            getLanguage().then(lang => {
+                if (loading || refreshing || loadingNextPage)
+                    loadData(lang);
+                setLanguage(lang);
+            })
+            return;
+        }
+
         if (loading || refreshing || loadingNextPage)
-            loadData()
+            loadData();
     }, [loading, refreshing, loadingNextPage]);
 
     const onRefresh = useCallback(() => {
