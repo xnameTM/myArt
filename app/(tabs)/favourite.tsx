@@ -1,28 +1,27 @@
 import {
     ActivityIndicator, Animated, FlatList, Image,
     RefreshControl,
-    SafeAreaView, ScrollView,
-    StyleSheet, TouchableOpacity
+    SafeAreaView,
+    StyleSheet, TouchableOpacity, useColorScheme,
+    Text, View
 } from 'react-native';
-import { Text, View } from '../../components/templates/Themed';
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import { Dimensions } from 'react-native';
-import ExploreCard from "../../components/ExploreCard";
 import DynamicHeader from "../../components/DynamicHeader";
-import {useFocusEffect, useRouter} from "expo-router";
+import {Stack, useFocusEffect, useRouter} from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {NativeSyntheticEvent} from "react-native/Libraries/Types/CoreEventTypes";
-import {NativeScrollEvent} from "react-native/Libraries/Components/ScrollView/ScrollView";
+import FavouriteCard from "../../components/FavouriteCard";
 
 const headerHeight = 60;
-const itemsPerPage = 20;
-const snapOffsets = [0, 100, 200];
+const itemsPerPage = 15;
 
 export default function AllTab() {
-    const {width, height} = Dimensions.get('window');
     const scrollY = new Animated.Value(0);
+    const {height} = Dimensions.get('window');
+    const router = useRouter();
     const [page, setPage] = useState<number>(1);
     const [data, setData] = useState<any[]>([]);
+    const colorScheme = useColorScheme();
     const [dataStates, setDataStates] = useState<{
         error: string | null,
         loading: boolean,
@@ -34,11 +33,12 @@ export default function AllTab() {
         refreshing: false,
         loadingNextPage: false
     });
-    const router = useRouter();
 
     const loadData = async () => {
         try {
-            const ids: string[] = JSON.parse(await AsyncStorage.getItem('favourited') ?? '[]')
+            const ids: string[] = JSON.parse(await AsyncStorage.getItem('favourited') ?? '[]').filter((_ : any, index: number) => {
+                return index >= (page - 1) * itemsPerPage && index < page * itemsPerPage
+            });
 
             if (data.length < (page - 1) * itemsPerPage) {
                 setDataStates({
@@ -51,23 +51,19 @@ export default function AllTab() {
             }
 
             const newData: any[] = (await Promise.all(ids.map(async (id) => {
-                const {data}: {data: any[]} = await (await fetch(`https://api.artic.edu/api/v1/artworks/${id}`)).json();
+                const {data}: {data: any[]} = await (await fetch(`https://api.artic.edu/api/v1/artworks/${id}?field=id,image_id,title,description`)).json();
 
                 return data;
             }))).filter(item => item != null);
 
-            console.log(ids, data, newData, dataStates)
-
+            setData(prev => prev.concat(newData));
             setDataStates({
                 error: null,
                 loading: false,
                 refreshing: false,
                 loadingNextPage: false
             })
-            setData(data.concat(newData));
         } catch (err) {
-            console.log(err)
-
             setDataStates({
                 error: 'Unable to load gallery photos...',
                 loading: false,
@@ -77,44 +73,40 @@ export default function AllTab() {
         }
     };
 
-    const scrollViewRef = useRef<ScrollView>(null);
-
-    const onScroll = useCallback(
-        (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-            const { contentOffset } = event.nativeEvent;
-
-            // Określ aktualny snapOffset na podstawie położenia contentOffset
-            const currentSnapOffset = snapOffsets.reduce(
-                (closest, offset) =>
-                    Math.abs(offset - contentOffset.y) < Math.abs(closest - contentOffset.y)
-                        ? offset
-                        : closest,
-                snapOffsets[0]
-            );
-
-            // Ustawia nowy contentOffset na aktualny snapOffset
-            scrollViewRef.current?.scrollTo({ x: 0, y: currentSnapOffset, animated: true });
-        },
-        [scrollViewRef]
-    );
-
     useEffect(() => {
         if (dataStates.loading || dataStates.refreshing || dataStates.loadingNextPage)
             loadData();
-    }, [dataStates]);
+    }, [dataStates.refreshing, dataStates.loadingNextPage]);
 
     const onRefresh = useCallback(() => {
         setPage(1);
         setData([]);
         setDataStates(prev => {
             prev.refreshing = true;
+            prev.loadingNextPage = false;
 
             return prev;
         });
     }, []);
 
+    useFocusEffect(() => {
+        AsyncStorage.getItem('reload-favourite-card')
+            .then((ids: string | null): string[] => JSON.parse(ids ?? '[]'))
+            .then((ids: string[]) => {
+                if (ids.length > 0) {
+                    AsyncStorage.setItem('reload-favourite-card', '[]');
+                    if (!dataStates.loading && !dataStates.refreshing && !dataStates.loadingNextPage) {
+                        setPage(1);
+                        setData([]);
+                        loadData();
+                    }
+                }
+            })
+    })
+
     const handleLoadMore = () => {
         if (dataStates.loadingNextPage) return;
+        if (page * itemsPerPage > data.length) return;
 
         setPage(prevPage => prevPage + 1);
         setDataStates(prev => {
@@ -124,9 +116,18 @@ export default function AllTab() {
         })
     };
 
+    const removeFavourite = useCallback(async (id: string) => {
+        const ids: string[] = JSON.parse(await AsyncStorage.getItem('favourited') ?? '[]').filter((savedId: string) => savedId != id);
+        await AsyncStorage.setItem('favourited', JSON.stringify(ids));
+        const reloadExploreCardIds: string[] = JSON.parse(await AsyncStorage.getItem('reload-explore-card') ?? '[]');
+        await AsyncStorage.setItem('reload-explore-card', JSON.stringify(reloadExploreCardIds.concat([id])));
+        setData(prev => prev.filter(item => item.id != id));
+    }, []);
+
     if (dataStates.loading)
         return (
             <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                <Stack.Screen options={{headerStyle: {backgroundColor: colorScheme == 'dark' ? 'black' : 'white'}}}/>
                 <ActivityIndicator color='white' size='large'/>
             </View>
         );
@@ -134,24 +135,32 @@ export default function AllTab() {
     return (
         <SafeAreaView style={{position: 'relative'}}>
             <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10}}>
-                <TouchableOpacity onPress={() => {setDataStates({error: null, loading: true, loadingNextPage: false, refreshing: false})}}>
-                    <Text style={{fontSize: 20, fontWeight: '600'}}>Explore</Text>
-                </TouchableOpacity>
-                <TouchableOpacity>
-                    <Image source={{uri: 'https://paczaizm.pl/content/wp-content/uploads/andrzej-duda-gruby-grubas-przerobka-faceapp-twarz.jpg'}} style={{width: 44, height: 44, borderRadius: 10}}/>
+                <TouchableOpacity onPress={onRefresh}>
+                    <Text style={{fontSize: 20, fontWeight: '600', color: colorScheme === 'dark' ? 'white' : 'black'}}>Favourite</Text>
                 </TouchableOpacity>
             </DynamicHeader>
-            {dataStates.error ? (
+            {dataStates.refreshing ? (
+                <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', height: height}}>
+                    <ActivityIndicator color={colorScheme === 'dark' ? 'white' : 'black'} size='large'/>
+                </View>
+            ) : dataStates.error ? (
                 <View style={{paddingTop: 50, flex: 1, alignItems: 'center'}}>
-                    <Text style={{fontSize: 20, color: 'white'}}>{dataStates.error}</Text>
+                    <Text style={{fontSize: 20, color: colorScheme === 'dark' ? 'white' : 'black'}}>{dataStates.error}</Text>
                 </View>
             ) : (
                 data.length <= 0 ? (
-                    <Text style={{color: 'white'}}>No favourites</Text>
+                    <View style={{height: height - 185, justifyContent: 'center', alignItems: 'center'}}>
+                        <View style={{flexDirection: 'row', gap: 4}}>
+                            <Text style={{color: colorScheme === 'dark' ? 'white' : 'black'}}>No favourites</Text>
+                            <TouchableOpacity onPress={onRefresh}>
+                                <Text style={{textDecorationLine: 'underline', color: colorScheme === 'dark' ? 'white' : 'black'}}>Reload?</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 ) : (
                     <FlatList
                         contentContainerStyle={{gap: 20}}
-                        style={{height: '100%', top: -headerHeight, paddingTop: headerHeight, position: 'relative', paddingHorizontal: 10}}
+                        style={{height: height - 120, top: -headerHeight, paddingTop: headerHeight, position: 'relative', paddingHorizontal: 10}}
                         showsVerticalScrollIndicator={false}
                         refreshControl={
                             <RefreshControl
@@ -159,11 +168,11 @@ export default function AllTab() {
                                 onRefresh={onRefresh}
                             />
                         }
-                        indicatorStyle='white'
+                        indicatorStyle={colorScheme == 'dark' ? 'white' : 'black'}
                         onScroll={({nativeEvent}) => {
                             scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
 
-                            if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height * 4 && data.length > 0)
+                            if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height * 2 && data.length > 0)
                                 handleLoadMore();
                         }}
                         scrollEventThrottle={16}
@@ -171,34 +180,12 @@ export default function AllTab() {
                         data={data}
                         renderItem={({item, index}) => (
                             // <ExploreCard item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
-                            <ScrollView
-                                snapToOffsets={snapOffsets}
-                                snapToInterval={snapOffsets[1]}
-                                snapToAlignment={'start'}
-                                contentOffset={{x: 100, y: 0}}
-                                disableScrollViewPanResponder={true}
-                                disableIntervalMomentum={true}
-                                decelerationRate={0.001}
-                                bounces={false}
-                                style={{width: '100%', backgroundColor: '#a00', position: 'relative'}}
-                                showsHorizontalScrollIndicator={false}
-                                horizontal={true}
-                                onScroll={onScroll}
-                                scrollEventThrottle={16}
-                            >
-                                <View style={{width: width - 20 + 200, backgroundColor: 'yellow', flex: 1, flexDirection: 'row'}}>
-                                    <View style={{height: '100%', width: 100, backgroundColor: 'green'}}></View>
-                                    <View style={{backgroundColor: '#111', padding: 10, borderRadius: 16, width: width - 20}}>
-                                        <Image source={{uri: `https://www.artic.edu/iiif/2/${item.image_id}/full/843,/0/default.jpg`}} style={{width: 80, height: 80, backgroundColor: 'red', borderRadius: 6}}/>
-                                    </View>
-                                    <View style={{height: '100%', width: 100, backgroundColor: 'red'}}></View>
-                                </View>
-                            </ScrollView>
+                            <FavouriteCard item={item} removeFavourite={() => removeFavourite(String(item.id))} handlePress={() => router.push(`/details/${item.id}`)}/>
                         )}
                         keyExtractor={({id}) => id}
                         ListFooterComponent={(
-                            <View>
-                                {!dataStates.refreshing && !dataStates.loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
+                            <View style={{paddingVertical: 30}}>
+                                {!dataStates.refreshing && !dataStates.loading ? null : <ActivityIndicator color={colorScheme === 'dark' ? 'white' : 'black'} size='small'/>}
                             </View>
                         )}
                     />

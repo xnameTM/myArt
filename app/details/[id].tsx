@@ -5,12 +5,12 @@ import {
     Pressable,
     SafeAreaView,
     ScrollView,
-    TouchableOpacity,
-    View
+    TouchableOpacity, useColorScheme,
+    View,
+    Text, Share
 } from "react-native";
-import {Text} from "../../components/templates/Themed";
-import {Href, Link, Stack, useLocalSearchParams, useRouter} from "expo-router";
-import {useEffect, useState} from "react";
+import { Link, Stack, useLocalSearchParams, useRouter} from "expo-router";
+import React, {useEffect, useState} from "react";
 import {Ionicons} from '@expo/vector-icons';
 import * as Haptics from "expo-haptics";
 import {formatDesciption, shortenText} from "../../utils/Utils";
@@ -19,16 +19,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 function ExploreDetailsItem({name, value, pressable = false, link}: {name: string, value: string | null, pressable: boolean, link: any}) {
     const screenWidth = Dimensions.get('window').width;
+    const colorScheme = useColorScheme();
 
     return (value ? (
             <View style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10, paddingBottom: 1, borderTopColor: '#252525', borderTopWidth: 1}}>
-                <Text style={{width: 140}}>{name}</Text>
+                <Text style={{width: 140, color: colorScheme == 'dark' ? 'white' : 'black'}}>{name}</Text>
                 {pressable ? (
                     <Link href={link}>
-                        <Text style={{maxWidth: screenWidth - 20 - 140, textAlign: 'right', textDecorationLine: 'underline'}}>{value}</Text>
+                        <Text style={{maxWidth: screenWidth - 20 - 140, textAlign: 'right', textDecorationLine: 'underline', color: colorScheme == 'dark' ? 'white' : 'black'}}>{value}</Text>
                     </Link>
                 ) : (
-                    <Text style={{maxWidth: screenWidth - 20 - 140, textAlign: 'right'}}>{value}</Text>
+                    <Text style={{maxWidth: screenWidth - 20 - 140, textAlign: 'right', color: colorScheme == 'dark' ? 'white' : 'black'}}>{value}</Text>
                 )}
             </View>
         ) : ''
@@ -41,7 +42,7 @@ export default function ExploreDetailsPage() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const id = params.id as string;
-
+    const colorScheme = useColorScheme();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -51,7 +52,7 @@ export default function ExploreDetailsPage() {
 
     const loadLocalData = async () => {
         try {
-            const response: {data: any} = await (await fetch(`https://api.artic.edu/api/v1/artworks/${id}`)).json();
+            const response: {data: any} = await (await fetch(`https://api.artic.edu/api/v1/artworks/${id}?fields=image_id,title,description,subject_titles,artist_title,place_of_origin,date_display,medium_display,dimensions,credit_line,main_reference_number,copyright_notice,artist_id`)).json();
 
             if (!image || !height) {
                 const additionalResponse = await (await fetch(`https://www.artic.edu/iiif/2/${response.data.image_id}`)).json();
@@ -107,8 +108,14 @@ export default function ExploreDetailsPage() {
         loadFavourited();
     }, []);
 
-    const requireExploreCardReload = () => {
-        AsyncStorage.setItem('reload-explore-card', 'true');
+    const requireExploreCardReload = async (id: string) => {
+        const reloadExploreCardIds: string[] = JSON.parse(await AsyncStorage.getItem('reload-explore-card') ?? '[]');
+        await AsyncStorage.setItem('reload-explore-card', JSON.stringify(reloadExploreCardIds.concat([id])));
+    }
+
+    const requireSearchCardReload = async (id: string) => {
+        const reloadExploreCardIds: string[] = JSON.parse(await AsyncStorage.getItem('reload-search-card') ?? '[]');
+        await AsyncStorage.setItem('reload-search-card', JSON.stringify(reloadExploreCardIds.concat([id])));
     }
 
     const saveLiked = async () => {
@@ -124,7 +131,15 @@ export default function ExploreDetailsPage() {
             }
         }
 
-        requireExploreCardReload()
+        requireExploreCardReload(String(id))
+        requireSearchCardReload(String(id))
+
+        AsyncStorage.getItem('reload-favourite-card')
+            .then((ids: string | null): string[] => JSON.parse(ids ?? '[]'))
+            .then((ids: string[]) => {
+                if (!ids.includes(String(id)))
+                    AsyncStorage.setItem('reload-favourite-card', JSON.stringify(ids.concat([String(id)])));
+            })
     }
 
     const saveFavourited = async () => {
@@ -140,7 +155,15 @@ export default function ExploreDetailsPage() {
             }
         }
 
-        requireExploreCardReload()
+        requireExploreCardReload(String(id))
+        requireSearchCardReload(String(id))
+
+        AsyncStorage.getItem('reload-favourite-card')
+            .then((ids: string | null): string[] => JSON.parse(ids ?? '[]'))
+            .then((ids: string[]) => {
+                if (!ids.includes(String(id)))
+                    AsyncStorage.setItem('reload-favourite-card', JSON.stringify(ids.concat([String(id)])));
+            })
     }
 
     if (loading || error)
@@ -150,10 +173,10 @@ export default function ExploreDetailsPage() {
                     options={{
                         headerShown: true,
                         headerTitle: '',
-                        headerStyle: {backgroundColor: 'black'},
+                        headerStyle: {backgroundColor: colorScheme == 'dark' ? 'black' : 'white'},
                         headerLeft: () => (
-                            <TouchableOpacity>
-                                <Ionicons name='chevron-back' size={26} color='white' onPress={() => router.back()}/>
+                            <TouchableOpacity onPress={() => router.back()}>
+                                <Ionicons name='chevron-back' size={26} color={colorScheme === 'dark' ? 'white' : 'black'}/>
                             </TouchableOpacity>
                         )
                     }}
@@ -171,10 +194,10 @@ export default function ExploreDetailsPage() {
             <Stack.Screen
                 options={{
                     headerShown: true,
-                    headerStyle: {backgroundColor: 'black'},
+                    headerStyle: {backgroundColor: colorScheme === 'dark' ? 'black' : 'white'},
                     headerLeft: () => (
-                        <TouchableOpacity>
-                            <Ionicons name='chevron-back' size={26} color='white' onPress={() => router.back()}/>
+                        <TouchableOpacity onPress={() => router.back()}>
+                            <Ionicons name='chevron-back' size={26} color={colorScheme === 'dark' ? 'white' : 'black'}/>
                         </TouchableOpacity>
                     ),
                     headerTitle: shortenText(data.title, 10)
@@ -202,27 +225,35 @@ export default function ExploreDetailsPage() {
                                 setLiked(prev => !prev)
                                 saveLiked()
                             }}>
-                                <Ionicons name={liked ? 'heart' : 'heart-outline'} size={30} color={liked ? 'red' : 'white'}/>
+                                <Ionicons name={liked ? 'heart' : 'heart-outline'} size={30} color={liked ? 'red' : colorScheme === 'dark' ? 'white' : 'black'}/>
                             </TouchableOpacity>
-                            <TouchableOpacity>
-                                <Ionicons name='chatbubble-outline' size={30} color='white'/>
-                            </TouchableOpacity>
-                            <TouchableOpacity>
-                                <Ionicons name='share-outline' size={30} color='white'/>
+                            {/*<TouchableOpacity>*/}
+                            {/*    <Ionicons name='chatbubble-outline' size={30} color={colorScheme === 'dark' ? 'white' : 'black'}/>*/}
+                            {/*</TouchableOpacity>*/}
+                            <TouchableOpacity onPress={() => {
+                                Share.share({
+                                    message: data.title ?? 'Untitled',
+                                    url: `https://www.artic.edu/iiif/2/${data.image_id}/full/1920,/0/default.jpg`
+                                })
+                            }}>
+                                <Ionicons name='share-outline' size={30} color={colorScheme === 'dark' ? 'white' : 'black'}/>
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity>
-                            <Ionicons name={favourited ? 'bookmark' : 'bookmark-outline'} onPress={() => {
-                                if (!favourited)
-                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                                setFavourited(prev => !prev)
-                                saveFavourited()
-                            }} size={30} color={favourited ? '#EFAD29' : 'white'}/>
+                        <TouchableOpacity onPress={() => {
+                            if (!favourited)
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                            setFavourited(prev => !prev)
+                            saveFavourited()
+                        }}>
+                            <Ionicons name={favourited ? 'bookmark' : 'bookmark-outline'} size={30} color={favourited ? '#EFAD29' : colorScheme === 'dark' ? 'white' : 'black'}/>
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={{fontWeight: '600', fontSize: 18}}>{data.title ?? 'Untitled'}</Text>
+                    <Text style={{fontWeight: '600', fontSize: 18, color: colorScheme == 'dark' ? 'white' : 'black'}}>{data.title ?? 'Untitled'}</Text>
+                    {data.description ? (
+                        <Text style={{fontSize: 14, color: colorScheme == 'dark' ? 'white' : 'black'}}>{formatDesciption(data.description ?? '').replaceAll('\n', '\n\n').replaceAll('. . .', '...')}</Text>
+                    ) : null}
                     {/*<Text>Likes: 6376</Text>*/}
                     {(data.subject_titles ?? []).length > 0 ? (
                         <View style={{flex: 1, gap: 5, alignItems: 'flex-start', flexDirection: 'row', maxWidth: '100%', flexWrap: 'wrap'}}>
@@ -230,8 +261,8 @@ export default function ExploreDetailsPage() {
                                 <TouchableOpacity onPress={() => {
                                     // @ts-ignore
                                     router.push(`search-artworks?${new URLSearchParams({filter: 'default', text: hashtag})}`)
-                                }} style={{backgroundColor: '#333', paddingVertical: 2, paddingHorizontal: 4, borderRadius: 3}} key={index}>
-                                    <Text>
+                                }} style={{backgroundColor: colorScheme === 'dark' ? '#333' : '#ccc', paddingVertical: 2, paddingHorizontal: 4, borderRadius: 3}} key={index}>
+                                    <Text style={{color: colorScheme === 'dark' ? 'white' : 'black'}}>
                                         #{shortenText(hashtag, 2)}
                                     </Text>
                                 </TouchableOpacity>
@@ -240,7 +271,7 @@ export default function ExploreDetailsPage() {
                     ) : null}
                     <ExploreDetailsItem name='Artist' value={data.artist_title} pressable={true} link={`/artists/${data.artist_id}`}/>
                     <ExploreDetailsItem name='Title' value={data.title} pressable={false} link=''/>
-                    <ExploreDetailsItem name='Place' value={data.place_of_origin} pressable={false} link=''/>
+                    <ExploreDetailsItem name='Place' value={data.place_of_origin} pressable={true} link={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.place_of_origin)}`}/>
                     <ExploreDetailsItem name='Date' value={data.date_display} pressable={true} link={`/search-artworks?${new URLSearchParams({filter: 'date_display', text: data.date_display})}`}/>
                     <ExploreDetailsItem name='Medium' value={data.medium_display} pressable={false} link=''/>
                     <ExploreDetailsItem name='Dimensions' value={data.dimensions} pressable={false} link=''/>

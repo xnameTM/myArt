@@ -1,15 +1,21 @@
 import {
-  ActivityIndicator, Animated, FlatList, Image,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
   RefreshControl,
   SafeAreaView,
-  StyleSheet, TouchableOpacity
+  StyleSheet,
+  TouchableOpacity,
+  useColorScheme,
+  Text,
+  View
 } from 'react-native';
-import { Text, View } from '../../components/templates/Themed';
-import {useCallback, useEffect, useRef, useState} from 'react';
-import { Dimensions } from 'react-native';
-import ExploreCard from "../../components/ExploreCard";
-import DynamicHeader from "../../components/DynamicHeader";
-import {useFocusEffect, useRouter} from "expo-router";
+import { useCallback, useEffect, useState } from 'react';
+import ExploreCard, { CardPlacementType } from '../../components/ExploreCard';
+import DynamicHeader from '../../components/DynamicHeader';
+import { useRouter } from 'expo-router';
 
 const headerHeight = 60;
 
@@ -20,13 +26,15 @@ export default function AllTab() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [loadingNextPage, setLoadingNextPage] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const colorScheme = useColorScheme();
   const router = useRouter();
 
   const loadData = async () => {
     try {
       const newData : {data: any[]} = await (await fetch('https://api.artic.edu/api/v1/artworks?' + new URLSearchParams({
         page: String(page),
-        limit: '20'
+        limit: '20',
+        fields: 'id,title,artist_title,description,subject_titles,image_id'
       }))).json();
 
       const formattedNewData = (await Promise.all(newData.data.map(async (item) => {
@@ -74,7 +82,7 @@ export default function AllTab() {
   if (loading)
     return (
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-          <ActivityIndicator color='white' size='large'/>
+          <ActivityIndicator color={colorScheme === 'dark' ? 'black' : 'white'} size='large'/>
         </View>
     );
 
@@ -83,11 +91,8 @@ export default function AllTab() {
   return (
     <SafeAreaView style={{position: 'relative'}}>
       <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10}}>
-        <TouchableOpacity>
-          <Text style={{fontSize: 20, fontWeight: '600'}}>Explore</Text>
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Image source={{uri: 'https://paczaizm.pl/content/wp-content/uploads/andrzej-duda-gruby-grubas-przerobka-faceapp-twarz.jpg'}} style={{width: 44, height: 44, borderRadius: 10}}/>
+        <TouchableOpacity onPress={onRefresh}>
+          <Text style={{fontSize: 20, fontWeight: '600', color: colorScheme === 'dark' ? 'white' : 'black'}}>Explore</Text>
         </TouchableOpacity>
       </DynamicHeader>
         {error ? (
@@ -95,14 +100,6 @@ export default function AllTab() {
               <Text style={{fontSize: 20, color: 'white'}}>{error}</Text>
             </View>
         ) : (
-            // <>
-            //   <View style={{flex: 1, gap: 20}}>
-            //     {data.map((item, index) => (
-            //         <ExploreCard item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
-            //     ))}
-            //   </View>
-            //   {!refreshing ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
-            // </>
             <FlatList
                 removeClippedSubviews={true}
                 contentContainerStyle={{gap: 20}}
@@ -114,7 +111,7 @@ export default function AllTab() {
                       onRefresh={onRefresh}
                   />
                 }
-                indicatorStyle='white'
+                indicatorStyle={colorScheme == 'dark' ? 'white' : 'black'}
                 onScroll={({nativeEvent}) => {
                   scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
 
@@ -125,12 +122,12 @@ export default function AllTab() {
                 stickyHeaderHiddenOnScroll={true}
                 data={data}
                 renderItem={({item, index}) => (
-                    <ExploreCard item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
+                    <ExploreCard placementType={CardPlacementType.Explore} item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
                 )}
-                keyExtractor={({id}) => id}
+                keyExtractor={({id, image_id}) => `explore-${image_id}-${id}`}
                 ListFooterComponent={(
-                    <View>
-                      {!refreshing && !loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
+                    <View style={{paddingVertical: 30}}>
+                      {!refreshing && !loading ? <ActivityIndicator color={colorScheme === 'dark' ? 'black' : 'white'} size='small'/> : ''}
                     </View>
                 )}
             />

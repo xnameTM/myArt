@@ -1,4 +1,5 @@
-import {TouchableOpacity, Image, StyleProp, ViewStyle, Animated} from "react-native";
+import {TouchableOpacity, Image, StyleProp, ViewStyle, Animated, Appearance, useColorScheme} from "react-native";
+import getColorScheme = Appearance.getColorScheme;
 
 export default function DynamicHeader({scrollY, headerHeight, children, style}: {scrollY: Animated.Value, headerHeight: number, children: any, style: StyleProp<ViewStyle>}) {
     const diffClamp = Animated.diffClamp(scrollY, 0, 55)
@@ -11,6 +12,8 @@ export default function DynamicHeader({scrollY, headerHeight, children, style}: 
         outputRange: [1, -.5]
     });
 
+    const colorSheme = useColorScheme();
+
     return (
         <Animated.View
             style={{
@@ -22,7 +25,7 @@ export default function DynamicHeader({scrollY, headerHeight, children, style}: 
                 left: 0,
                 zIndex: 1,
                 height: headerHeight,
-                backgroundColor: 'black'
+                backgroundColor: colorSheme === 'dark' ? 'black' : '#fff'
             }}
         >{/* @ts-ignore */}
             <Animated.View style={{opacity, ...style}}>

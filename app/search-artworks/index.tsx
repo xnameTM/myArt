@@ -1,21 +1,18 @@
 import {
-    ActivityIndicator, Dimensions,
+    ActivityIndicator,
+    Dimensions,
     FlatList,
-    Image,
     RefreshControl,
-    SafeAreaView,
+    SafeAreaView, ScrollView,
     Text,
-    TouchableOpacity,
+    TouchableOpacity, useColorScheme,
     View
 } from 'react-native';
-import {Stack, useFocusEffect, useLocalSearchParams, useRouter} from "expo-router";
-import {ExternalLink} from "../../components/templates/ExternalLink";
+import {Stack, useLocalSearchParams, useRouter} from "expo-router";
 import React, {useCallback, useEffect, useState} from "react";
-import ExploreCard from "../../components/ExploreCard";
+import ExploreCard, {CardPlacementType} from "../../components/ExploreCard";
 import {Ionicons} from "@expo/vector-icons";
 import {shortenText} from "../../utils/Utils";
-
-const fields = 'id,title,artist_title,date_display,image_id,description,subject_titles';
 
 export default function SearchScreen() {
     const router = useRouter();
@@ -27,6 +24,8 @@ export default function SearchScreen() {
     const [loadingNextPage, setLoadingNextPage] = useState<boolean>(false);
     const [total, setTotal] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const {height} = Dimensions.get('window');
+    const colorScheme = useColorScheme();
 
     const loadData = async () => {
         try {
@@ -35,12 +34,11 @@ export default function SearchScreen() {
             obj[`query[bool][must][match][${filter}]`] = String(text);
 
             const newData : {data: any[], pagination: {total: number}} = await (await fetch(`https://api.artic.edu/api/v1/artworks/search?${new URLSearchParams({
-                fields,
+                fields: 'id,title,artist_title,description,subject_titles,image_id',
                 page: String(page),
                 limit: '20',
                 ...(filter == 'default' ? {q: String(text)} : obj)
             })}`)).json();
-
 
             setTotal(newData.pagination.total)
 
@@ -101,10 +99,10 @@ export default function SearchScreen() {
                 <Stack.Screen options={{
                     headerShown: true,
                     headerTitle: shortenText(String(text), 10),
-                    headerStyle: {backgroundColor: 'black'},
+                    headerStyle: {backgroundColor: colorScheme === 'dark' ? 'black' : 'white'},
                     headerLeft: () => (
-                        <TouchableOpacity>
-                            <Ionicons name='chevron-back' size={26} color='white' onPress={() => router.back()}/>
+                        <TouchableOpacity onPress={() => router.back()}>
+                            <Ionicons name='chevron-back' size={26} color={colorScheme === 'dark' ? 'white' : 'black'}/>
                         </TouchableOpacity>
                     )
                 }}/>
@@ -119,14 +117,34 @@ export default function SearchScreen() {
             <Stack.Screen options={{
                 headerShown: true,
                 headerTitle: shortenText(String(text), 10),
-                headerStyle: {backgroundColor: 'black'},
+                headerStyle: {backgroundColor: colorScheme === 'dark' ? 'black' : 'white'},
                 headerLeft: () => (
-                    <TouchableOpacity>
-                        <Ionicons name='chevron-back' size={26} color='white' onPress={() => router.back()}/>
+                    <TouchableOpacity onPress={() => router.back()}>
+                        <Ionicons name='chevron-back' size={26} color={colorScheme === 'dark' ? 'white' : 'black'}/>
                     </TouchableOpacity>
                 )
             }}/>
-            {data.length <= 0 ? (
+            {refreshing ? (
+                <View style={{height: height - 90, justifyContent: 'center'}}>
+                    <ActivityIndicator color={colorScheme === 'dark' ? 'white' : 'black'} size='large'/>
+                </View>
+            ) : error ? (
+                <ScrollView
+                    style={{height: height - 90}}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                        />
+                    }
+                    indicatorStyle={colorScheme == 'dark' ? 'white' : 'black'}
+                >
+                    <View style={{height: height - 90, justifyContent: 'center'}}>
+                        <Text style={{fontSize: 20, color: colorScheme === 'dark' ? 'white' : 'black', textAlign: 'center'}}>{error}</Text>
+                    </View>
+                </ScrollView>
+            ) : data.length <= 0 ? (
                 <View style={{minHeight: Dimensions.get('window').height - 150, flex: 1, justifyContent: 'center', alignItems: 'center'}}>
                     <Text style={{color: 'white', textAlign: 'center', paddingVertical: 20, fontSize: 15}}>No results for: {text}</Text>
                 </View>
@@ -135,7 +153,7 @@ export default function SearchScreen() {
                     data={data}
                     contentContainerStyle={{gap: 20}}
                     renderItem={({item, index}) => (
-                        <ExploreCard item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
+                        <ExploreCard placementType={CardPlacementType.Search} item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
                     )}
                     keyExtractor={({id}) => id}
                     style={{position: 'relative', gap: 20}}
@@ -155,8 +173,8 @@ export default function SearchScreen() {
                     scrollEventThrottle={16}
                     stickyHeaderHiddenOnScroll={true}
                     ListFooterComponent={(
-                        <View>
-                            {total ? (data.length >= total ? <Text style={{color: 'white', textAlign: 'center', paddingVertical: 20, letterSpacing: .5}}>No more results</Text> : !refreshing && !loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : '') : (!refreshing && !loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : '')}
+                        <View style={{paddingVertical: 30}}>
+                            {total ? (data.length >= total ? <Text style={{color: 'white', textAlign: 'center', letterSpacing: .5}}>No more results</Text> : !refreshing && !loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : '') : (!refreshing && !loading ? <ActivityIndicator color='white' size='small'/> : null)}
                         </View>
                     )}
                 />

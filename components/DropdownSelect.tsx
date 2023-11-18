@@ -5,14 +5,15 @@ import React, {useEffect} from "react";
 import Animated, {Easing, useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated";
 
 interface Props {
-    filters: {name: string, icon: string, key: string}[];
+    filters: {name: string, key: string}[];
     currentFilter: string;
     setCurrentFilter: React.Dispatch<React.SetStateAction<string>>;
     isVisible: boolean;
     setVisible: React.Dispatch<React.SetStateAction<boolean>>;
+    label: string;
 }
 
-export function SearchFilter({filters, currentFilter, setCurrentFilter, isVisible, setVisible}: Props) {
+export default function DropdownSelect({filters, currentFilter, setCurrentFilter, isVisible, setVisible, label}: Props) {
     const anim = useSharedValue(isVisible ? 1 : 0);
     const colorSheme = useColorScheme();
 
@@ -36,8 +37,8 @@ export function SearchFilter({filters, currentFilter, setCurrentFilter, isVisibl
         <Animated.View style={[{position: 'absolute', top: 0, right: -95, height: '100%'}, containerStyle]}>
             <View>
                 <View style={{overflow: 'hidden', borderTopLeftRadius: 10, borderTopRightRadius: 10}}>
-                    <BlurView intensity={20} style={{...styles.desc, backgroundColor: colorSheme === 'dark' ? '#222222cc' : '#ffffffcc'}}>
-                        <Text style={{...styles.descText, color: colorSheme === 'dark' ? 'rgba(192,192,192,0.8)' : '#666'}}>Filter by</Text>
+                    <BlurView intensity={20} style={{...styles.desc, backgroundColor: colorSheme === 'dark' ? '#222222cc' : 'rgba(239,239,239,0.8)'}}>
+                        <Text style={{...styles.descText, color: colorSheme === 'dark' ? 'rgba(192,192,192,0.8)' : '#666'}}>{label}</Text>
                     </BlurView>
                 </View>
                 <View style={{width: 220}}>
@@ -47,11 +48,9 @@ export function SearchFilter({filters, currentFilter, setCurrentFilter, isVisibl
                             setVisible(false);
                         }}>
                             <View style={index + 1 == filters.length ? styles.btnLastWrapper : {}}>
-                                <BlurView intensity={20} style={{...(index + 1 == filters.length ? styles.btnLast : styles.btn), backgroundColor: colorSheme === 'dark' ? '#222222cc' : '#ffffffcc'}}>
+                                <BlurView intensity={20} style={{...(index + 1 == filters.length ? styles.btnLast : styles.btn), backgroundColor: colorSheme === 'dark' ? '#222222cc' : 'rgba(239,239,239,0.8)'}}>
                                     {currentFilter == f.key ? <Ionicons name='checkmark' size={24} style={styles.checkmark} color={colorSheme === 'dark' ? '#fff' : '#000'}/> : ''}
                                     <Text style={{...styles.btnText, color: colorSheme === 'dark' ? '#fff' : '#000'}}>{f.name}</Text>
-                                     {/*@ts-ignore */}
-                                    <Ionicons name={f.icon} style={{...styles.btnIcon, color: colorSheme === 'dark' ? '#fff' : '#000'}} size={24} color='white'/>
                                 </BlurView>
                             </View>
                         </Pressable>

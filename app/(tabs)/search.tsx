@@ -1,22 +1,24 @@
 import {
   ActivityIndicator,
-  Animated as Anim, Dimensions, Image,
+  Animated as Anim,
+  Dimensions,
+  Image,
   RefreshControl,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   View,
-  Text, FlatList
+  Text,
+  FlatList,
+  useColorScheme
 } from 'react-native';
-
-import DynamicHeader from "../../components/DynamicHeader";
-import {useCallback, useEffect, useRef, useState} from "react";
-import {Ionicons} from "@expo/vector-icons";
-import Animated, {Easing, useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated";
-import {useRouter} from "expo-router";
-import {SearchFilter} from "../../components/SearchFilter";
+import DynamicHeader from '../../components/DynamicHeader';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import {Stack, useRouter} from 'expo-router';
+import { SearchFilter } from '../../components/SearchFilter';
 
 const headerHeight: number = 50;
 
@@ -47,6 +49,7 @@ export default function SearchTab() {
   const [filter, setFilter] = useState<string>('default');
   const [isFilterVisible, setFilterVisible] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>('');
+  const colorScheme = useColorScheme();
 
   const loadData = async () => {
     try {
@@ -122,13 +125,13 @@ export default function SearchTab() {
                 placeholderTextColor='#888'
                 selectionColor='#888'
                 style={{
-                  backgroundColor: '#252525',
+                  backgroundColor: colorScheme === 'dark' ? '#252525' : '#ccc',
                   height: '100%',
                   flex: 1,
                   paddingHorizontal: 14,
                   borderRadius: 10,
                   fontSize: 18,
-                  color: 'white',
+                  color: colorScheme === 'dark' ? '#fff': '#000',
                   width: '100%'
                 }}
                 value={searchText}
@@ -151,12 +154,12 @@ export default function SearchTab() {
             />
           </Animated.View>
 
-          <Animated.View style={[{position: 'absolute', top: 0, zIndex: 1, backgroundColor: 'black'}, animatedCancelButton]}>
+          <Animated.View style={[{position: 'absolute', top: 0, zIndex: 1, backgroundColor: colorScheme === 'dark' ? 'black' : 'white'}, animatedCancelButton]}>
             <TouchableOpacity onPress={() => {
               if (textInputRef.current)
                 textInputRef.current.blur();
             }} style={{height: headerHeight, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8}}>
-              <Text style={{color: 'white', fontSize: 18}}>Cancel</Text>
+              <Text style={{color: colorScheme === 'dark' ? 'white' : 'black', fontSize: 18}}>Cancel</Text>
             </TouchableOpacity>
           </Animated.View>
           <Animated.View style={[{position: 'absolute', top: 5, right: 10, width: headerHeight - 20, height: headerHeight - 10}, animatedFilterButton]}>
@@ -164,49 +167,58 @@ export default function SearchTab() {
               setFilterVisible(value => !value);
               scrollY.setValue(0)
             }} style={{width: '100%', height: '100%', flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 2}}>
-              <Ionicons name='ellipsis-horizontal' size={26} color='white'/>
+              <Ionicons name='ellipsis-horizontal' size={26} color={colorScheme === 'dark' ? 'white' : 'black'}/>
             </TouchableOpacity>
             <SearchFilter filters={filters} currentFilter={filter} setCurrentFilter={setFilter} isVisible={isFilterVisible} setVisible={setFilterVisible}/>
           </Animated.View>
         </DynamicHeader>
-        <FlatList
-            removeClippedSubviews={true}
-            keyboardDismissMode='on-drag'
-            contentContainerStyle={{gap: 3}}
-            columnWrapperStyle={{gap: 3}}
-            data={data}
-            numColumns={3}
-            renderItem={({item}) => (
-                <TouchableOpacity key={item.id} onPress={() => router.push(`/details/${item.id}`)}>
-                  <Image source={{uri: item.image}} style={{width: (width - 6) / 3, height: (width - 6) / 3}}/>
-                </TouchableOpacity>
-            )}
-            keyExtractor={({id}) => id}
-            style={{height: height - 115, top: -headerHeight, paddingTop: headerHeight, position: 'relative'}}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-              />
-            }
-            scrollEnabled={!isFilterVisible}
-            indicatorStyle='white'
-            onScroll={({nativeEvent}) => {
-              if (!isFilterVisible)
-                scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
+        {error ? (
+            <View style={{height: height - 175, justifyContent: 'center', gap: 5}}>
+              <Text style={{fontSize: 20, color: colorScheme === 'dark' ? '#fff' : '#000', textAlign: 'center'}}>{error}</Text>
+              <TouchableOpacity onPress={onRefresh}>
+                <Text style={{fontSize: 20, fontWeight: '500', color: colorScheme === 'dark' ? '#fff' : '#000', textAlign: 'center'}}>Reload?</Text>
+              </TouchableOpacity>
+            </View>
+        ) : (
+            <FlatList
+                removeClippedSubviews={true}
+                keyboardDismissMode='on-drag'
+                contentContainerStyle={{gap: 3}}
+                columnWrapperStyle={{gap: 3}}
+                data={data}
+                numColumns={3}
+                renderItem={({item}) => (
+                    <TouchableOpacity key={item.id} onPress={() => router.push(`/details/${item.id}`)}>
+                      <Image source={{uri: item.image}} style={{width: (width - 6) / 3, height: (width - 6) / 3}}/>
+                    </TouchableOpacity>
+                )}
+                keyExtractor={({id}) => id}
+                style={{height: height - 115, top: -headerHeight, paddingTop: headerHeight, position: 'relative'}}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                  <RefreshControl
+                      refreshing={refreshing}
+                      onRefresh={onRefresh}
+                  />
+                }
+                scrollEnabled={!isFilterVisible}
+                indicatorStyle={colorScheme == 'dark' ? 'white' : 'black'}
+                onScroll={({nativeEvent}) => {
+                  if (!isFilterVisible)
+                    scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
 
-              if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height && data.length > 0)
-                handleLoadMore();
-            }}
-            scrollEventThrottle={16}
-            stickyHeaderHiddenOnScroll={true}
-            ListFooterComponent={(
-                <View>
-                  {!refreshing && !loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
-                </View>
-            )}
-        />
+                  if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height && data.length > 0)
+                    handleLoadMore();
+                }}
+                scrollEventThrottle={16}
+                stickyHeaderHiddenOnScroll={true}
+                ListFooterComponent={(
+                    <View>
+                      {!refreshing && !loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
+                    </View>
+                )}
+            />
+        )}
       </SafeAreaView>
   );
 }
