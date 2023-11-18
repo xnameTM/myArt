@@ -3,9 +3,16 @@ import { Appearance, Pressable, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import getColorScheme = Appearance.getColorScheme;
+import {useEffect, useState} from "react";
+import {getLanguage} from "../../utils/Settings";
 
 export default function Layout() {
+  const [language, setLanguage] = useState<string | null>(null);
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    getLanguage().then(lang => setLanguage(lang));
+  }, []);
 
   return (
     <Tabs
@@ -19,7 +26,7 @@ export default function Layout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explore',
+          title: language === 'Polish' ? 'Odkrywaj' : 'Explore',
           tabBarIcon: ({focused}) => <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={getColorScheme() === 'dark' ? '#fff' : '#444'}/>,
           tabBarActiveTintColor: getColorScheme() === 'dark' ? '#fff' : '#444'
         }}
@@ -27,7 +34,7 @@ export default function Layout() {
       <Tabs.Screen
         name="search"
         options={{
-          title: 'Search',
+          title: language === 'Polish' ? 'Szukaj' : 'Search',
           tabBarIcon: ({focused}) => <Ionicons name={focused ? 'search' : 'search-outline'} size={24} color={getColorScheme() === 'dark' ? '#fff' : '#444'}/>,
             tabBarActiveTintColor: getColorScheme() === 'dark' ? '#fff' : '#444'
         }}
@@ -35,7 +42,7 @@ export default function Layout() {
       <Tabs.Screen
         name="favourite"
         options={{
-          title: 'Favourite',
+          title: language === 'Polish' ? 'Ulubione' : 'Favourite',
           tabBarIcon: ({focused}) => <Ionicons name={focused ? 'bookmark' : 'bookmark-outline'} size={24} color={getColorScheme() === 'dark' ? '#fff' : '#444'}/>,
             tabBarActiveTintColor: getColorScheme() === 'dark' ? '#fff' : '#444'
         }}
@@ -43,7 +50,7 @@ export default function Layout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: language === 'Polish' ? 'Ustawienia' : 'Settings',
           tabBarIcon: ({focused}) => <Ionicons name={focused ? 'settings-sharp' : 'settings-outline'} size={24} color={getColorScheme() === 'dark' ? '#fff' : '#444'}/>,
             tabBarActiveTintColor: getColorScheme() === 'dark' ? '#fff' : '#444'
         }}
