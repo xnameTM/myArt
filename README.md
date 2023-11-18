@@ -6,19 +6,19 @@ myArt is an Expo-based mobile application, utilizing the Art Institute of Chicag
 
 ## Features
 
-- **Explore Tab** ![Explore Tab](images/explore-tab.png) Browse through a diverse collection of artworks from the Art Institute of Chicago.
+- **Explore Tab** ![Explore Tab](https://raw.githubusercontent.com/xnameTM/myArt/main/images/explore-tab.png) Browse through a diverse collection of artworks from the Art Institute of Chicago.
 
 
 
-- **Search Tab** ![Search Tab 1](images/search-tab-1.png)![Search Tab 2](images/search-tab-2.png) Easily search for specific artworks based on your preferences.
+- **Search Tab** ![Search Tab 1](https://raw.githubusercontent.com/xnameTM/myArt/main/images/search-tab-1.png)![Search Tab 2](https://raw.githubusercontent.com/xnameTM/myArt/main/images/search-tab-2.png) Easily search for specific artworks based on your preferences.
 
 
 
-- **Favorite Tab** ![Favorite Tab](images/favourite-tab.png) Save your favorite artworks for quick access and future reference.
+- **Favorite Tab** ![Favorite Tab](https://raw.githubusercontent.com/xnameTM/myArt/main/images/favourite-tab.png) Save your favorite artworks for quick access and future reference.
 
 
 
-- **Artwork Details** ![Artwork Details 1](images/artwork-details-1.png)![Artwork Details 2](images/artwork-details-2.png) Get detailed information about each artwork, including its history and artist details.
+- **Artwork Details** ![Artwork Details 1](https://raw.githubusercontent.com/xnameTM/myArt/main/images/artwork-details-1.PNG)![Artwork Details 2]([images/artwork-details-2.png](https://raw.githubusercontent.com/xnameTM/myArt/main/images/artwork-details-2.PNG)) Get detailed information about each artwork, including its history and artist details.
 
 ## Gesture Features
 
