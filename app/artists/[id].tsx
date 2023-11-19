@@ -55,14 +55,14 @@ export default function ExploreDetailsPage() {
                             source_lang: "auto",
                             target_lang: "pl",
                             // @ts-ignore
-                            text: String(response.data[key] ?? '')
+                            text: String(data[key] ?? '')
                         }),
                         headers: {"Content-Type": "application/json"}
                     })).json();
 
                     if (status == 'success')
                         // @ts-ignore
-                        response.data[key] = message;
+                        data[key] = message;
                 }));
             }
 
