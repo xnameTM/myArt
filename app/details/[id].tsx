@@ -2,42 +2,44 @@ import {
     ActivityIndicator,
     Dimensions,
     Image,
-    Pressable,
     SafeAreaView,
     ScrollView,
-    TouchableOpacity, useColorScheme,
+    TouchableOpacity,
+    useColorScheme,
     View,
-    Text, Share
-} from "react-native";
-import { Link, Stack, useLocalSearchParams, useRouter} from "expo-router";
-import React, {useEffect, useState} from "react";
-import {Ionicons} from '@expo/vector-icons';
-import * as Haptics from "expo-haptics";
-import {formatDesciption, shortenText} from "../../utils/Utils";
-import {TapGestureHandler} from "react-native-gesture-handler";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import {getLanguage} from "../../utils/Settings";
+    StyleSheet,
+    Text,
+    Share
+} from 'react-native';
+import { Link, Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { formatDesciption, shortenText } from '../../utils/Utils';
+import { TapGestureHandler } from 'react-native-gesture-handler';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLanguage } from '../../utils/Settings';
 
 function ExploreDetailsItem({name, value, pressable = false, link}: {name: string, value: string | null, pressable: boolean, link: any}) {
-    const screenWidth = Dimensions.get('window').width;
+    const {width} = Dimensions.get('window');
     const colorScheme = useColorScheme();
 
     return (value ? (
-            <View style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10, paddingBottom: 1, borderTopColor: '#252525', borderTopWidth: 1}}>
+            <View style={styles.itemContainer}>
                 <Text style={{width: 140, color: colorScheme == 'dark' ? 'white' : 'black'}}>{name}</Text>
                 {pressable ? (
                     <Link href={link}>
-                        <Text style={{maxWidth: screenWidth - 20 - 140, textAlign: 'right', textDecorationLine: 'underline', color: colorScheme == 'dark' ? 'white' : 'black'}}>{value}</Text>
+                        <Text style={{maxWidth: width - 20 - 140, ...styles.itemLink, color: colorScheme == 'dark' ? 'white' : 'black'}}>{value}</Text>
                     </Link>
                 ) : (
-                    <Text style={{maxWidth: screenWidth - 20 - 140, textAlign: 'right', color: colorScheme == 'dark' ? 'white' : 'black'}}>{value}</Text>
+                    <Text style={{maxWidth: width - 20 - 140, ...styles.itemText, color: colorScheme == 'dark' ? 'white' : 'black'}}>{value}</Text>
                 )}
             </View>
         ) : ''
     );
 }
 
-const disabledIds = ['image_id', 'title', 'subject_titles', 'artist_title', 'date_display', 'main_reference_number', 'copyright_notice', 'artist_id']
+const disabledIds = ['image_id', 'title', 'subject_titles', 'artist_title', 'date_display', 'main_reference_number', 'copyright_notice', 'artist_id'];
 
 export default function ExploreDetailsPage() {
     const [image, setImage] = useState<string>('');
@@ -207,9 +209,37 @@ export default function ExploreDetailsPage() {
             })
     }
 
+    const handleDoubleTapGesture = () => {
+        setLiked(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        saveLiked()
+    }
+
+    const onLikedBtnPress = () => {
+        if (!liked)
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+
+        setLiked(prev => !prev)
+        saveLiked()
+    }
+
+    const onShare = () => {
+        Share.share({
+            message: data.title ?? 'Untitled',
+            url: `https://www.artic.edu/iiif/2/${data.image_id}/full/1920,/0/default.jpg`
+        })
+    }
+
+    const onFavouritedBtnPress = () => {
+        if (!favourited)
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        setFavourited(prev => !prev)
+        saveFavourited()
+    }
+
     if (loading || error)
         return (
-            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+            <View style={styles.errorWrapper}>
                 <Stack.Screen
                     options={{
                         headerShown: true,
@@ -223,7 +253,7 @@ export default function ExploreDetailsPage() {
                     }}
                 />
                 {error ? (
-                    <Text style={{fontSize: 20, color: 'white'}}>{error}</Text>
+                    <Text style={styles.errorText}>{error}</Text>
                 ) : (
                     <ActivityIndicator color='white' size='large'/>
                 )}
@@ -244,65 +274,78 @@ export default function ExploreDetailsPage() {
                     headerTitle: shortenText(data.title, 10)
                 }}
             />
-            <ScrollView style={{paddingHorizontal: 10, height: '100%'}} showsVerticalScrollIndicator={false}>
-                <View style={{flex: 1, gap: 10, paddingTop: 10, paddingBottom: 50}}>
+            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                <View style={styles.dataWrapper}>
                     <TapGestureHandler
                         maxDelayMs={200}
                         numberOfTaps={2}
-                        onEnded={() => {
-                            setLiked(true);
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                            saveLiked()
-                        }}
+                        onEnded={handleDoubleTapGesture}
                     >
-                        <Image source={{uri: image == 'undefined' ? '' : image}} style={{width: '100%', height: Number(height == 'undefined' ? '0' : height), borderRadius: 10}}/>
+                        <Image
+                            source={{uri: image == 'undefined' ? '' : image}}
+                            style={{...styles.image, height: Number(height ?? '0')}}
+                        />
                     </TapGestureHandler>
-                    <View style={{flex: 1, flexDirection: 'row'}}>
+                    <View style={styles.interactWrapper}>
                         <View style={{flex: 1, flexDirection: 'row', gap: 10}}>
-                            <TouchableOpacity onPress={() => {
-                                if (!liked)
-                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-
-                                setLiked(prev => !prev)
-                                saveLiked()
-                            }}>
-                                <Ionicons name={liked ? 'heart' : 'heart-outline'} size={30} color={liked ? 'red' : colorScheme === 'dark' ? 'white' : 'black'}/>
+                            <TouchableOpacity onPress={onLikedBtnPress}>
+                                <Ionicons
+                                    name={liked ? 'heart' : 'heart-outline'}
+                                    size={30}
+                                    color={liked ? 'red' : colorScheme === 'dark' ? 'white' : 'black'}
+                                />
                             </TouchableOpacity>
                             {/*<TouchableOpacity>*/}
                             {/*    <Ionicons name='chatbubble-outline' size={30} color={colorScheme === 'dark' ? 'white' : 'black'}/>*/}
                             {/*</TouchableOpacity>*/}
-                            <TouchableOpacity onPress={() => {
-                                Share.share({
-                                    message: data.title ?? 'Untitled',
-                                    url: `https://www.artic.edu/iiif/2/${data.image_id}/full/1920,/0/default.jpg`
-                                })
-                            }}>
+                            <TouchableOpacity onPress={onShare}>
                                 <Ionicons name='share-outline' size={30} color={colorScheme === 'dark' ? 'white' : 'black'}/>
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity onPress={() => {
-                            if (!favourited)
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                            setFavourited(prev => !prev)
-                            saveFavourited()
-                        }}>
-                            <Ionicons name={favourited ? 'bookmark' : 'bookmark-outline'} size={30} color={favourited ? '#EFAD29' : colorScheme === 'dark' ? 'white' : 'black'}/>
+                        <TouchableOpacity onPress={onFavouritedBtnPress}>
+                            <Ionicons
+                                name={favourited ? 'bookmark' : 'bookmark-outline'}
+                                size={30}
+                                color={favourited ? '#EFAD29' : colorScheme === 'dark' ? 'white' : 'black'}
+                            />
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={{fontWeight: '600', fontSize: 18, color: colorScheme == 'dark' ? 'white' : 'black'}}>{data.title ?? 'Untitled'}</Text>
+                    <Text style={{
+                        ...styles.title,
+                        color: colorScheme == 'dark' ? 'white' : 'black'
+                    }}>
+                        {data.title ?? 'Untitled'}
+                    </Text>
+
                     {data.description ? (
-                        <Text style={{fontSize: 14, color: colorScheme == 'dark' ? 'white' : 'black'}}>{formatDesciption(data.description ?? '').replaceAll('\n', '\n\n').replaceAll('. . .', '...')}</Text>
+                        <Text style={{...styles.description, color: colorScheme == 'dark' ? 'white' : 'black'}}>
+                            {
+                                formatDesciption(data.description ?? '')
+                                    .replaceAll('\n', '\n\n')
+                                    .replaceAll('. . .', '...')
+                            }
+                        </Text>
                     ) : null}
+
                     {/*<Text>Likes: 6376</Text>*/}
+
                     {(data.subject_titles ?? []).length > 0 ? (
-                        <View style={{flex: 1, gap: 5, alignItems: 'flex-start', flexDirection: 'row', maxWidth: '100%', flexWrap: 'wrap'}}>
+                        <View style={styles.subjectTitlesContainer}>
                             {(data.subject_titles ?? []).map((hashtag: string, index: number) => (
-                                <TouchableOpacity onPress={() => {
-                                    // @ts-ignore
-                                    router.push(`search-artworks?${new URLSearchParams({filter: 'default', text: hashtag})}`)
-                                }} style={{backgroundColor: colorScheme === 'dark' ? '#333' : '#ccc', paddingVertical: 2, paddingHorizontal: 4, borderRadius: 3}} key={index}>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        // @ts-ignore
+                                        router.push(`search-artworks?${new URLSearchParams({
+                                            filter: 'default', text: hashtag
+                                        })}`);
+                                    }}
+                                    style={{
+                                        backgroundColor: colorScheme === 'dark' ? '#333' : '#ccc',
+                                        ...styles.subjectTitleBtn
+                                    }}
+                                    key={index}>
                                     <Text style={{color: colorScheme === 'dark' ? 'white' : 'black'}}>
                                         #{shortenText(hashtag, 2)}
                                     </Text>
@@ -310,8 +353,8 @@ export default function ExploreDetailsPage() {
                             ))}
                         </View>
                     ) : null}
-                    {/*<ExploreDetailsItem name={language == 'Polish' ? 'Artysta' : 'Artist'} value={data.artist_title} pressable={true} link={`/artists/${data.artist_id}`}/>*/}
-                    <ExploreDetailsItem name={language == 'Polish' ? 'Artysta' : 'Artist'} value={data.artist_title} pressable={false} link=''/>
+
+                    <ExploreDetailsItem name={language == 'Polish' ? 'Artysta' : 'Artist'} value={data.artist_title} pressable={true} link={`/artists/${data.artist_id}`}/>
                     <ExploreDetailsItem name={language == 'Polish' ? 'Tytuł' : 'Title'} value={data.title} pressable={false} link=''/>
                     <ExploreDetailsItem name={language == 'Polish' ? 'Miejsce' : 'Place'} value={data.place_of_origin} pressable={true} link={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.place_of_origin)}`}/>
                     <ExploreDetailsItem name={language == 'Polish' ? 'Data' : 'Date'} value={data.date_display} pressable={true} link={`/search-artworks?${new URLSearchParams({filter: 'date_display', text: data.date_display})}`}/>
@@ -325,3 +368,69 @@ export default function ExploreDetailsPage() {
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    itemContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingTop: 10,
+        paddingBottom: 1,
+        borderTopColor: '#252525',
+        borderTopWidth: 1
+    },
+    itemLink: {
+        textAlign: 'right',
+        textDecorationLine: 'underline'
+    },
+    itemText: {
+        textAlign: 'right'
+    },
+    errorWrapper: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    errorText: {
+        fontSize: 20,
+        color: 'white'
+    },
+    scrollView: {
+        paddingHorizontal: 10,
+        height: '100%'
+    },
+    dataWrapper: {
+        flex: 1,
+        gap: 10,
+        paddingTop: 10,
+        paddingBottom: 50
+    },
+    image: {
+        width: '100%',
+        borderRadius: 10
+    },
+    interactWrapper: {
+        flex: 1,
+        flexDirection: 'row'
+    },
+    title: {
+        fontWeight: '600',
+        fontSize: 18
+    },
+    description: {
+        fontSize: 14
+    },
+    subjectTitlesContainer: {
+        flex: 1,
+        gap: 5,
+        alignItems: 'flex-start',
+        flexDirection: 'row',
+        maxWidth: '100%',
+        flexWrap: 'wrap'
+    },
+    subjectTitleBtn: {
+        paddingVertical: 2,
+        paddingHorizontal: 4,
+        borderRadius: 3
+    }
+});

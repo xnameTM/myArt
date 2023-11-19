@@ -52,10 +52,24 @@ export function SearchFilter({filters, currentFilter, setCurrentFilter, isVisibl
                             setVisible(false);
                         }}>
                             <View style={index + 1 == filters.length ? styles.btnLastWrapper : {}}>
-                                <BlurView intensity={20} style={{...(index + 1 == filters.length ? styles.btnLast : styles.btn), backgroundColor: colorSheme === 'dark' ? '#222222cc' : '#ffffffcc'}}>
-                                    {currentFilter == f.key ? <Ionicons name='checkmark' size={24} style={styles.checkmark} color={colorSheme === 'dark' ? '#fff' : '#000'}/> : ''}
-                                    <Text style={{...styles.btnText, color: colorSheme === 'dark' ? '#fff' : '#000'}}>{language == 'Polish' ? f.pl : f.en}</Text>
-                                     {/*@ts-ignore */}
+                                <BlurView
+                                    intensity={20}
+                                    style={{
+                                        ...(index + 1 == filters.length ? styles.btnLast : styles.btn),
+                                        backgroundColor: colorSheme === 'dark' ? '#222222cc' : '#ffffffcc'
+                                    }}
+                                >
+                                    {currentFilter == f.key ?
+                                        <Ionicons
+                                            name='checkmark'
+                                            size={24}
+                                            style={styles.checkmark} color={colorSheme === 'dark' ? '#fff' : '#000'}
+                                        />
+                                    : null}
+                                    <Text style={{...styles.btnText, color: colorSheme === 'dark' ? '#fff' : '#000'}}>
+                                        {language == 'Polish' ? f.pl : f.en}
+                                    </Text>
+                                    {/*@ts-ignore */}
                                     <Ionicons name={f.icon} style={{...styles.btnIcon, color: colorSheme === 'dark' ? '#fff' : '#000'}} size={24} color='white'/>
                                 </BlurView>
                             </View>

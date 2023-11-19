@@ -11,15 +11,17 @@ import {
   View,
   Text,
   FlatList,
-  useColorScheme
+  useColorScheme,
+  NativeScrollEvent
 } from 'react-native';
 import DynamicHeader from '../../components/DynamicHeader';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import {Stack, useRouter} from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SearchFilter } from '../../components/SearchFilter';
-import {getLanguage} from "../../utils/Settings";
+import { getLanguage } from '../../utils/Settings';
+import { ArtworkModel } from '../../models/ArtworkModel';
 
 const headerHeight: number = 50;
 
@@ -55,7 +57,7 @@ export default function SearchTab() {
 
   const loadData = async () => {
     try {
-      const newData : {data: {id: number, image_id: string}[]} = await (await fetch('https://api.artic.edu/api/v1/artworks?' + new URLSearchParams({
+      const newData : {data: Partial<ArtworkModel>[]} = await (await fetch('https://api.artic.edu/api/v1/artworks?' + new URLSearchParams({
         page: String(page),
         limit: '24',
         field: 'id,image_id'
@@ -117,6 +119,40 @@ export default function SearchTab() {
     router.push(`/search-artworks?${new URLSearchParams({filter, text: searchText})}`)
   }
 
+  const onSearchbarFocus = () => {
+    scrollY.setValue(0);
+    searchBarFocus.value = withTiming(1, {
+      duration: 400,
+      easing: Easing.bezier(0.31, -0.02, 0, 1.03)
+    });
+    setFilterVisible(false);
+  }
+
+  const onSearchbarEndEditting = () => {
+    searchBarFocus.value = withTiming(0, {
+      duration: 400,
+      easing: Easing.bezier(0.31, -0.02, 0, 1.03)
+    })
+  }
+
+  const onCancelBtnPress = () => {
+    if (textInputRef.current)
+      textInputRef.current.blur();
+  }
+
+  const onFilterBtnPress = () => {
+    setFilterVisible(value => !value);
+    scrollY.setValue(0)
+  }
+
+  const handleScroll = ({nativeEvent}: {nativeEvent: NativeScrollEvent}) => {
+    if (!isFilterVisible)
+      scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
+
+    if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height && data.length > 0)
+      handleLoadMore();
+  }
+
   if (loading)
     return (
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -125,9 +161,9 @@ export default function SearchTab() {
     );
 
   return (
-      <SafeAreaView style={{position: 'relative'}}>
-        <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={{backgroundColor: 'black', position: 'relative', paddingHorizontal: 10}}>
-          <Animated.View style={[{paddingVertical: 5, position: 'absolute', top: 0, left: 10, height: headerHeight}, animatedTextInput]}>
+      <SafeAreaView style={styles.container}>
+        <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={styles.dynamicHeader}>
+          <Animated.View style={[styles.searchbarWrapper, animatedTextInput]}>
             <TextInput
                 ref={textInputRef}
                 keyboardType='web-search'
@@ -137,58 +173,48 @@ export default function SearchTab() {
                 placeholderTextColor='#888'
                 selectionColor='#888'
                 style={{
+                  ...styles.searchbar,
                   backgroundColor: colorScheme === 'dark' ? '#252525' : '#ccc',
-                  height: '100%',
-                  flex: 1,
-                  paddingHorizontal: 14,
-                  borderRadius: 10,
-                  fontSize: 18,
-                  color: colorScheme === 'dark' ? '#fff': '#000',
-                  width: '100%'
+                  color: colorScheme === 'dark' ? '#fff': '#000'
                 }}
                 value={searchText}
-                onChangeText={(text) => setSearchText(text)}
-                onFocus={() => {
-                  scrollY.setValue(0);
-                  searchBarFocus.value = withTiming(1, {
-                    duration: 400,
-                    easing: Easing.bezier(0.31, -0.02, 0, 1.03)
-                  });
-                  setFilterVisible(false);
-                }}
-                onEndEditing={() => {
-                  searchBarFocus.value = withTiming(0, {
-                    duration: 400,
-                    easing: Easing.bezier(0.31, -0.02, 0, 1.03)
-                  })
-                }}
-                onSubmitEditing={() => submitEditing()}
+                onChangeText={setSearchText}
+                onFocus={onSearchbarFocus}
+                onEndEditing={onSearchbarEndEditting}
+                onSubmitEditing={submitEditing}
             />
           </Animated.View>
 
-          <Animated.View style={[{position: 'absolute', top: 0, zIndex: 1, backgroundColor: colorScheme === 'dark' ? 'black' : 'white'}, animatedCancelButton]}>
-            <TouchableOpacity onPress={() => {
-              if (textInputRef.current)
-                textInputRef.current.blur();
-            }} style={{height: headerHeight, flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8}}>
-              <Text style={{color: colorScheme === 'dark' ? 'white' : 'black', fontSize: 18}}>{language == 'Polish' ? 'Anuluj' : 'Cancel'}</Text>
+          <Animated.View
+              style={[
+                  {...styles.cancelBtnWrapper, backgroundColor: colorScheme === 'dark' ? 'black' : 'white'},
+                animatedCancelButton
+              ]}
+          >
+            <TouchableOpacity onPress={onCancelBtnPress} style={styles.cancelBtn}>
+              <Text style={{color: colorScheme === 'dark' ? 'white' : 'black', ...styles.cancelBtnText}}>
+                {language == 'Polish' ? 'Anuluj' : 'Cancel'}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
-          <Animated.View style={[{position: 'absolute', top: 5, right: 10, width: headerHeight - 20, height: headerHeight - 10}, animatedFilterButton]}>
-            <TouchableOpacity onPress={() => {
-              setFilterVisible(value => !value);
-              scrollY.setValue(0)
-            }} style={{width: '100%', height: '100%', flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 2}}>
+          <Animated.View style={[styles.filterBtnWrapper, animatedFilterButton]}>
+            <TouchableOpacity onPress={onFilterBtnPress} style={styles.filterBtn}>
               <Ionicons name='ellipsis-horizontal' size={26} color={colorScheme === 'dark' ? 'white' : 'black'}/>
             </TouchableOpacity>
-            <SearchFilter filters={filters} currentFilter={filter} setCurrentFilter={setFilter} isVisible={isFilterVisible} setVisible={setFilterVisible}/>
+            <SearchFilter
+                filters={filters}
+                currentFilter={filter}
+                setCurrentFilter={setFilter}
+                isVisible={isFilterVisible}
+                setVisible={setFilterVisible}
+            />
           </Animated.View>
         </DynamicHeader>
         {error ? (
-            <View style={{height: height - 175, justifyContent: 'center', gap: 5}}>
-              <Text style={{fontSize: 20, color: colorScheme === 'dark' ? '#fff' : '#000', textAlign: 'center'}}>{error}</Text>
+            <View style={{height: height - 175, ...styles.errorWrapper}}>
+              <Text style={{...styles.errorText, color: colorScheme === 'dark' ? '#fff' : '#000'}}>{error}</Text>
               <TouchableOpacity onPress={onRefresh}>
-                <Text style={{fontSize: 20, fontWeight: '500', color: colorScheme === 'dark' ? '#fff' : '#000', textAlign: 'center'}}>Reload?</Text>
+                <Text style={{...styles.errorRefreshBtn, color: colorScheme === 'dark' ? '#fff' : '#000'}}>Reload?</Text>
               </TouchableOpacity>
             </View>
         ) : (
@@ -205,7 +231,7 @@ export default function SearchTab() {
                     </TouchableOpacity>
                 )}
                 keyExtractor={({id}) => id}
-                style={{height: height - 115, top: -headerHeight, paddingTop: headerHeight, position: 'relative'}}
+                style={{height: height - 115, ...styles.flatList}}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
                   <RefreshControl
@@ -214,19 +240,13 @@ export default function SearchTab() {
                   />
                 }
                 scrollEnabled={!isFilterVisible}
-                indicatorStyle={colorScheme == 'dark' ? 'white' : 'black'}
-                onScroll={({nativeEvent}) => {
-                  if (!isFilterVisible)
-                    scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
-
-                  if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height && data.length > 0)
-                    handleLoadMore();
-                }}
+                indicatorStyle={colorScheme === 'dark' ? 'white' : 'black'}
+                onScroll={handleScroll}
                 scrollEventThrottle={16}
                 stickyHeaderHiddenOnScroll={true}
                 ListFooterComponent={(
                     <View>
-                      {!refreshing && !loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : ''}
+                      {!refreshing && !loading ? <ActivityIndicator color='white' size='small' style={styles.indicator}/> : ''}
                     </View>
                 )}
             />
@@ -237,17 +257,77 @@ export default function SearchTab() {
 
 const styles = StyleSheet.create({
   container: {
+    position: 'relative'
+  },
+  dynamicHeader: {
+    backgroundColor: 'black',
+    position: 'relative',
+    paddingHorizontal: 10
+  },
+  searchbarWrapper: {
+    paddingVertical: 5,
+    position: 'absolute',
+    top: 0,
+    left: 10,
+    height: headerHeight
+  },
+  searchbar: {
+    height: '100%',
+    flex: 1,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    fontSize: 18,
+    width: '100%'
+  },
+  cancelBtnWrapper: {
+    position: 'absolute',
+    top: 0,
+    zIndex: 1
+  },
+  cancelBtn: {
+    height: headerHeight,
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    paddingHorizontal: 8
   },
-  title: {
+  cancelBtnText: {
+    fontSize: 18
+  },
+  filterBtnWrapper: {
+    position: 'absolute',
+    top: 5,
+    right: 10,
+    width: headerHeight - 20,
+    height: headerHeight - 10
+  },
+  filterBtn: {
+    width: '100%',
+    height: '100%',
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 2
+  },
+  errorWrapper: {
+    justifyContent: 'center',
+    gap: 5
+  },
+  errorText: {
     fontSize: 20,
-    fontWeight: 'bold'
+    textAlign: 'center'
   },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%'
+  errorRefreshBtn: {
+    fontSize: 20,
+    fontWeight: '500',
+    textAlign: 'center'
+  },
+  flatList: {
+    top: -headerHeight,
+    paddingTop: headerHeight,
+    position: 'relative'
+  },
+  indicator: {
+    paddingVertical: 20
   }
 });

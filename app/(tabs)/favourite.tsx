@@ -1,21 +1,27 @@
 import {
-    ActivityIndicator, Animated, FlatList, Image,
+    ActivityIndicator,
+    Animated,
+    FlatList,
     RefreshControl,
     SafeAreaView,
-    StyleSheet, TouchableOpacity, useColorScheme,
-    Text, View
+    StyleSheet,
+    TouchableOpacity,
+    useColorScheme,
+    Text,
+    View,
+    NativeScrollEvent
 } from 'react-native';
-import {useCallback, useEffect, useState} from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Dimensions } from 'react-native';
-import DynamicHeader from "../../components/DynamicHeader";
-import {Stack, useFocusEffect, useRouter} from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import FavouriteCard from "../../components/FavouriteCard";
-import {getLanguage, setLanguage} from "../../utils/Settings";
+import DynamicHeader from '../../components/DynamicHeader';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import FavouriteCard from '../../components/FavouriteCard';
+import { getLanguage } from '../../utils/Settings';
 
 const headerHeight = 60;
 const itemsPerPage = 15;
-const disabledIds = ['id', 'image_id', 'title']
+const disabledIds = ['id', 'image_id', 'title'];
 
 export default function FavouriteTab() {
     const scrollY = new Animated.Value(0);
@@ -164,43 +170,55 @@ export default function FavouriteTab() {
         setData(prev => prev.filter(item => item.id != id));
     }, []);
 
+    const handleScroll = ({nativeEvent}: {nativeEvent: NativeScrollEvent}) => {
+        scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
+
+        if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height * 2 && data.length > 0)
+            handleLoadMore();
+    }
+
     if (dataStates.loading)
         return (
-            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+            <View style={styles.loadingWrapper}>
                 <Stack.Screen options={{headerStyle: {backgroundColor: colorScheme == 'dark' ? 'black' : 'white'}}}/>
                 <ActivityIndicator color='white' size='large'/>
             </View>
         );
 
     return (
-        <SafeAreaView style={{position: 'relative'}}>
-            <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10}}>
+        <SafeAreaView style={styles.container}>
+            <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={styles.dynamicHeader}>
                 <TouchableOpacity onPress={onRefresh}>
-                    <Text style={{fontSize: 20, fontWeight: '600', color: colorScheme === 'dark' ? 'white' : 'black'}}>{language === 'Polish' ? 'Ulubione' : 'Favourite'}</Text>
+                    <Text style={{...styles.dynamicHeaderText, color: colorScheme === 'dark' ? 'white' : 'black'}}>{language === 'Polish' ? 'Ulubione' : 'Favourite'}</Text>
                 </TouchableOpacity>
             </DynamicHeader>
             {dataStates.refreshing ? (
-                <View style={{justifyContent: 'center', alignItems: 'center', height: height - 175}}>
+                <View style={{...styles.refreshWrapper, height: height - 175}}>
                     <ActivityIndicator color={colorScheme === 'dark' ? 'white' : 'black'} size='large'/>
                 </View>
             ) : dataStates.error ? (
-                <View style={{paddingTop: 50, flex: 1, alignItems: 'center'}}>
-                    <Text style={{fontSize: 20, color: colorScheme === 'dark' ? 'white' : 'black'}}>{dataStates.error}</Text>
+                <View style={styles.errorWrapper}>
+                    <Text style={{...styles.errorText, color: colorScheme === 'dark' ? 'white' : 'black'}}>{dataStates.error}</Text>
                 </View>
             ) : (
                 data.length <= 0 ? (
-                    <View style={{height: height - 185, justifyContent: 'center', alignItems: 'center'}}>
-                        <View style={{flexDirection: 'row', gap: 4}}>
+                    <View style={{height: height - 185, ...styles.noFavouritesContainer}}>
+                        <View style={styles.noFavouritesWrapper}>
                             <Text style={{color: colorScheme === 'dark' ? 'white' : 'black'}}>No favourites</Text>
                             <TouchableOpacity onPress={onRefresh}>
-                                <Text style={{textDecorationLine: 'underline', color: colorScheme === 'dark' ? 'white' : 'black'}}>Reload?</Text>
+                                <Text style={{
+                                    ...styles.noFavouritesRefreshBtnText,
+                                    color: colorScheme === 'dark' ? 'white' : 'black'
+                                }}>
+                                    Reload?
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 ) : (
                     <FlatList
                         contentContainerStyle={{gap: 20}}
-                        style={{height: height - 120, top: -headerHeight, paddingTop: headerHeight, position: 'relative', paddingHorizontal: 10}}
+                        style={{height: height - 120, ...styles.flatList}}
                         showsVerticalScrollIndicator={false}
                         refreshControl={
                             <RefreshControl
@@ -209,22 +227,21 @@ export default function FavouriteTab() {
                             />
                         }
                         indicatorStyle={colorScheme == 'dark' ? 'white' : 'black'}
-                        onScroll={({nativeEvent}) => {
-                            scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
-
-                            if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height * 2 && data.length > 0)
-                                handleLoadMore();
-                        }}
+                        onScroll={handleScroll}
                         scrollEventThrottle={16}
                         stickyHeaderHiddenOnScroll={true}
                         data={data}
                         renderItem={({item, index}) => (
-                            // <ExploreCard item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
-                            <FavouriteCard language={language ?? 'English'} item={item} removeFavourite={() => removeFavourite(String(item.id))} handlePress={() => router.push(`/details/${item.id}`)}/>
+                            <FavouriteCard
+                                language={language ?? 'English'}
+                                item={item}
+                                removeFavourite={() => removeFavourite(String(item.id))}
+                                handlePress={() => router.push(`/details/${item.id}`)}
+                            />
                         )}
                         keyExtractor={({id}) => id}
                         ListFooterComponent={(
-                            <View style={{paddingVertical: 30}}>
+                            <View style={styles.indicatorWrapper}>
                                 {!dataStates.refreshing && !dataStates.loading ? null : <ActivityIndicator color={colorScheme === 'dark' ? 'white' : 'black'} size='small'/>}
                             </View>
                         )}
@@ -237,17 +254,54 @@ export default function FavouriteTab() {
 
 const styles = StyleSheet.create({
     container: {
-        // flex: 1,
-        // alignItems: 'center',
-        // justifyContent: 'center'
+        position: 'relative'
     },
-    title: {
+    loadingWrapper: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    dynamicHeader: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 10
+    },
+    dynamicHeaderText: {
         fontSize: 20,
-        fontWeight: 'bold'
+        fontWeight: '600'
     },
-    separator: {
-        marginVertical: 30,
-        height: 1,
-        width: '80%'
+    refreshWrapper: {
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    errorWrapper: {
+        paddingTop: 50,
+        flex: 1,
+        alignItems: 'center'
+    },
+    errorText: {
+        fontSize: 20
+    },
+    noFavouritesContainer: {
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    noFavouritesWrapper: {
+        flexDirection: 'row',
+        gap: 4
+    },
+    noFavouritesRefreshBtnText: {
+        textDecorationLine: 'underline'
+    },
+    flatList: {
+        top: -headerHeight,
+        paddingTop: headerHeight,
+        position: 'relative',
+        paddingHorizontal: 10
+    },
+    indicatorWrapper: {
+        paddingVertical: 30
     }
 });

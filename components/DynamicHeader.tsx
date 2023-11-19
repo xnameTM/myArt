@@ -2,7 +2,7 @@ import {TouchableOpacity, Image, StyleProp, ViewStyle, Animated, Appearance, use
 import getColorScheme = Appearance.getColorScheme;
 
 export default function DynamicHeader({scrollY, headerHeight, children, style}: {scrollY: Animated.Value, headerHeight: number, children: any, style: StyleProp<ViewStyle>}) {
-    const diffClamp = Animated.diffClamp(scrollY, 0, 55)
+    const diffClamp = Animated.diffClamp(scrollY, 0, headerHeight - 5)
     const translateY = diffClamp.interpolate({
         inputRange: [0, headerHeight],
         outputRange: [0, -headerHeight]

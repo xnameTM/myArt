@@ -3,21 +3,22 @@ import {
   Animated,
   Dimensions,
   FlatList,
-  Image,
   RefreshControl,
   SafeAreaView,
   StyleSheet,
   TouchableOpacity,
   useColorScheme,
   Text,
-  View
+  View,
+  NativeScrollEvent
 } from 'react-native';
 import { useCallback, useEffect, useState } from 'react';
 import ExploreCard, { CardPlacementType } from '../../components/ExploreCard';
 import DynamicHeader from '../../components/DynamicHeader';
-import {useFocusEffect, useRouter} from 'expo-router';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import {getLanguage} from "../../utils/Settings";
+import { useFocusEffect, useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLanguage } from '../../utils/Settings';
+import { ArtworkModel } from '../../models/ArtworkModel';
 
 const headerHeight = 60;
 const disabledIds = ['id', 'title', 'artisi_title', 'subject_titles', 'image_id'];
@@ -30,19 +31,21 @@ export default function ExploreTab() {
   const [loadingNextPage, setLoadingNextPage] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string | null>(null);
+
+  const scrollY = new Animated.Value(0);
   const colorScheme = useColorScheme();
   const router = useRouter();
 
   const loadData = async () => {
     const language = await getLanguage();
     try {
-      const newData : {data: any[]} = await (await fetch('https://api.artic.edu/api/v1/artworks?' + new URLSearchParams({
+      const newData : {data: Partial<ArtworkModel>[]} = await (await fetch('https://api.artic.edu/api/v1/artworks?' + new URLSearchParams({
         page: String(page),
         limit: '20',
         fields: 'id,title,artist_title,description,subject_titles,image_id'
       }))).json();
 
-      const formattedNewData = (await Promise.all(newData.data.map(async (item) => {
+      const formattedNewData = (await Promise.all(newData.data.map(async (item: Partial<ArtworkModel>) => {
         try {
           const {width, height} = await (await fetch(`https://www.artic.edu/iiif/2/${item.image_id}`)).json();
 
@@ -50,7 +53,7 @@ export default function ExploreTab() {
           const imageHeight = Math.floor(height / width * imageWidth);
 
           if (language == 'Polish') {
-            await Promise.all(Object.keys(item).map(async (key) => {
+            await Promise.all(Object.keys(item).map(async (key: string) => {
               if (disabledIds.includes(key)) return;
 
               const {status, message}: {status: string, message: string} = await (await fetch("https://script.google.com/macros/s/AKfycbxFO-bcrgAssi32N0EqtetVA-GnvWNk4ky6SO0pkpl_VF3osPr_8x54FqeDveQv3KrB/exec", {
@@ -58,12 +61,14 @@ export default function ExploreTab() {
                 body: JSON.stringify({
                   source_lang: "auto",
                   target_lang: "pl",
+                  // @ts-ignore
                   text: String(item[key] ?? '')
                 }),
                 headers: {"Content-Type": "application/json"}
               })).json();
 
               if (status == 'success')
+                // @ts-ignore
                 item[key] = message;
             }));
           }
@@ -118,31 +123,38 @@ export default function ExploreTab() {
         })
   })
 
+  const handleScroll = ({nativeEvent}: {nativeEvent: NativeScrollEvent}) => {
+    scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
+
+    if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height * 4 && data.length > 0)
+      handleLoadMore();
+  }
+
   if (loading)
     return (
-        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <View style={styles.loadingIndicatorWrapper}>
           <ActivityIndicator color={colorScheme === 'dark' ? 'black' : 'white'} size='large'/>
         </View>
     );
 
-  const scrollY = new Animated.Value(0);
-
   return (
-    <SafeAreaView style={{position: 'relative'}}>
-      <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={{flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10}}>
+    <SafeAreaView style={styles.container}>
+      <DynamicHeader scrollY={scrollY} headerHeight={headerHeight} style={styles.dynamicHeader}>
         <TouchableOpacity onPress={onRefresh}>
-          <Text style={{fontSize: 20, fontWeight: '600', color: colorScheme === 'dark' ? 'white' : 'black'}}>{language === 'English' ? 'Explore' : language === 'Polish' ? 'Odkrywaj' : ''}</Text>
+          <Text style={{...styles.dynamicHeaderText, color: colorScheme === 'dark' ? 'white' : 'black'}}>
+            {language === 'English' ? 'Explore' : language === 'Polish' ? 'Odkrywaj' : ''}
+          </Text>
         </TouchableOpacity>
       </DynamicHeader>
         {error ? (
-            <View style={{paddingTop: 50, flex: 1, alignItems: 'center'}}>
+            <View style={styles.errorWrapper}>
               <Text style={{fontSize: 20, color: 'white'}}>{error}</Text>
             </View>
         ) : (
             <FlatList
                 removeClippedSubviews={true}
                 contentContainerStyle={{gap: 20}}
-                style={{height: '100%', top: -headerHeight, paddingTop: headerHeight, position: 'relative'}}
+                style={styles.flatList}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
                   <RefreshControl
@@ -151,12 +163,7 @@ export default function ExploreTab() {
                   />
                 }
                 indicatorStyle={colorScheme == 'dark' ? 'white' : 'black'}
-                onScroll={({nativeEvent}) => {
-                  scrollY.setValue(Math.max(nativeEvent.contentOffset.y, 0));
-
-                  if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height * 4 && data.length > 0)
-                    handleLoadMore();
-                }}
+                onScroll={handleScroll}
                 scrollEventThrottle={16}
                 stickyHeaderHiddenOnScroll={true}
                 data={data}
@@ -164,30 +171,49 @@ export default function ExploreTab() {
                     <ExploreCard placementType={CardPlacementType.Explore} item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
                 )}
                 keyExtractor={({id, image_id}) => `explore-${image_id}-${id}`}
-                ListFooterComponent={(
-                    <View style={{paddingVertical: 30}}>
+                ListFooterComponent={
+                    <View style={styles.indicatorWrapper}>
                       {!refreshing && !loading ? <ActivityIndicator color={colorScheme === 'dark' ? 'black' : 'white'} size='small'/> : ''}
                     </View>
-                )}
+                }
             />
         )}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const styles= StyleSheet.create({
   container: {
-    // flex: 1,
-    // alignItems: 'center',
-    // justifyContent: 'center'
+    position: 'relative'
   },
-  title: {
+  dynamicHeader: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10
+  },
+  dynamicHeaderText: {
     fontSize: 20,
-    fontWeight: 'bold'
+    fontWeight: '600'
   },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%'
+  errorWrapper: {
+    paddingTop: 50,
+    flex: 1,
+    alignItems: 'center'
+  },
+  flatList: {
+    height: '100%',
+    top: -headerHeight,
+    paddingTop: headerHeight,
+    position: 'relative'
+  },
+  indicatorWrapper: {
+    paddingVertical: 30
+  },
+  loadingIndicatorWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
   }
 });

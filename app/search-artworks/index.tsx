@@ -3,17 +3,20 @@ import {
     Dimensions,
     FlatList,
     RefreshControl,
-    SafeAreaView, ScrollView,
+    SafeAreaView,
+    ScrollView,
     Text,
-    TouchableOpacity, useColorScheme,
-    View
+    TouchableOpacity,
+    useColorScheme,
+    View,
+    StyleSheet, NativeScrollEvent
 } from 'react-native';
-import {Stack, useLocalSearchParams, useRouter} from "expo-router";
-import React, {useCallback, useEffect, useState} from "react";
-import ExploreCard, {CardPlacementType} from "../../components/ExploreCard";
-import {Ionicons} from "@expo/vector-icons";
-import {shortenText} from "../../utils/Utils";
-import {getLanguage} from "../../utils/Settings";
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import ExploreCard, { CardPlacementType } from '../../components/ExploreCard';
+import { Ionicons } from '@expo/vector-icons';
+import { shortenText } from '../../utils/Utils';
+import { getLanguage } from '../../utils/Settings';
 
 const disabledIds = ['id', 'title', 'artisi_title', 'subject_titles', 'image_id'];
 
@@ -127,9 +130,15 @@ export default function SearchScreen() {
         setLoadingNextPage(true);
     };
 
+    const handleScroll = ({nativeEvent}: {nativeEvent: NativeScrollEvent}) => {
+        if (total)
+            if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height && data.length > 0 && data.length < total)
+                handleLoadMore();
+    }
+
     if (loading)
         return (
-            <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+            <View style={styles.loadingContainer}>
                 <Stack.Screen options={{
                     headerShown: true,
                     headerTitle: shortenText(String(text), 10),
@@ -144,8 +153,6 @@ export default function SearchScreen() {
             </View>
         );
 
-    // endpoint: `https://api.artic.edu/api/v1/artworks/search?query[bool][must][match][artist_display]=Pablo+Picasso`
-
     return (
         <SafeAreaView>
             <Stack.Screen options={{
@@ -159,7 +166,7 @@ export default function SearchScreen() {
                 )
             }}/>
             {refreshing ? (
-                <View style={{height: height - 90, justifyContent: 'center'}}>
+                <View style={{height: height - 90, ...styles.refreshWrapper}}>
                     <ActivityIndicator color={colorScheme === 'dark' ? 'white' : 'black'} size='large'/>
                 </View>
             ) : error ? (
@@ -174,23 +181,31 @@ export default function SearchScreen() {
                     }
                     indicatorStyle={colorScheme == 'dark' ? 'white' : 'black'}
                 >
-                    <View style={{height: height - 90, justifyContent: 'center'}}>
-                        <Text style={{fontSize: 20, color: colorScheme === 'dark' ? 'white' : 'black', textAlign: 'center'}}>{error}</Text>
+                    <View style={{height: height - 90, ...styles.errorWrapper}}>
+                        <Text style={{...styles.errorText, color: colorScheme === 'dark' ? 'white' : 'black'}}>{error}</Text>
                     </View>
                 </ScrollView>
             ) : data.length <= 0 ? (
-                <View style={{minHeight: Dimensions.get('window').height - 150, flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-                    <Text style={{color: 'white', textAlign: 'center', paddingVertical: 20, fontSize: 15}}>No results for: {text}</Text>
+                <View style={{minHeight: height - 150, ...styles.noResultsWrapper}}>
+                    <Text style={styles.noResultsText}>No results for: {text}</Text>
                 </View>
             ) : (
                 <FlatList
                     data={data}
                     contentContainerStyle={{gap: 20}}
                     renderItem={({item, index}) => (
-                        <ExploreCard placementType={CardPlacementType.Search} item={item} key={index} handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({height: String(item.height), image: item.image})}`)}/>
+                        <ExploreCard
+                            placementType={CardPlacementType.Search}
+                            item={item}
+                            key={index}
+                            handleCardPress={() => router.push(`/details/${item.id}?${new URLSearchParams({
+                                height: String(item.height),
+                                image: item.image
+                            })}`)}
+                        />
                     )}
                     keyExtractor={({id}) => id}
-                    style={{position: 'relative', gap: 20}}
+                    style={styles.flatList}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl
@@ -199,16 +214,20 @@ export default function SearchScreen() {
                         />
                     }
                     indicatorStyle='white'
-                    onScroll={({nativeEvent}) => {
-                        if (total)
-                            if (nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - nativeEvent.layoutMeasurement.height && data.length > 0 && data.length < total)
-                                handleLoadMore();
-                    }}
+                    onScroll={handleScroll}
                     scrollEventThrottle={16}
                     stickyHeaderHiddenOnScroll={true}
                     ListFooterComponent={(
-                        <View style={{paddingVertical: 30}}>
-                            {total ? (data.length >= total ? <Text style={{color: 'white', textAlign: 'center', letterSpacing: .5}}>No more results</Text> : !refreshing && !loading ? <ActivityIndicator color='white' size='small' style={{paddingVertical: 20}}/> : '') : (!refreshing && !loading ? <ActivityIndicator color='white' size='small'/> : null)}
+                        <View style={styles.indicatorWrapper}>
+                            {total ?
+                                (data.length >= total ?
+                                    <Text style={styles.noMoreResultsBtn}>No more results</Text>
+                                : !refreshing && !loading ?
+                                    <ActivityIndicator color='white' size='small' style={styles.indicator}/>
+                                : null)
+                            :
+                                (!refreshing && !loading ? <ActivityIndicator color='white' size='small'/>
+                            : null)}
                         </View>
                     )}
                 />
@@ -216,3 +235,45 @@ export default function SearchScreen() {
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    refreshWrapper: {
+        justifyContent: 'center'
+    },
+    errorWrapper: {
+        justifyContent: 'center'
+    },
+    errorText: {
+        fontSize: 20,
+        textAlign: 'center'
+    },
+    noResultsWrapper: {
+        flex: 1, justifyContent: 'center', alignItems: 'center'
+    },
+    noResultsText: {
+        color: 'white',
+        textAlign: 'center',
+        paddingVertical: 20,
+        fontSize: 15
+    },
+    flatList: {
+        position: 'relative',
+        gap: 20
+    },
+    indicatorWrapper: {
+        paddingVertical: 30
+    },
+    noMoreResultsBtn: {
+        color: 'white',
+        textAlign: 'center',
+        letterSpacing: .5
+    },
+    indicator: {
+        paddingVertical: 20
+    }
+})

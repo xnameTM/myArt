@@ -1,7 +1,7 @@
-import {Image, TouchableOpacity, useColorScheme, Text, View, Share} from 'react-native';
-import {LinearGradient} from 'expo-linear-gradient';
-import {Ionicons} from '@expo/vector-icons';
-import React, {useRef, useState, useEffect} from 'react';
+import { Image, TouchableOpacity, useColorScheme, Text, View, Share } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useRef, useState, useEffect } from 'react';
 import {
     GestureHandlerRootView, HandlerStateChangeEvent,
     State,
@@ -9,17 +9,18 @@ import {
     TapGestureHandlerEventPayload
 } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
-import {formatDesciption, shortenText} from "../utils/Utils";
-import {useFocusEffect, useRouter} from "expo-router";
+import { formatDesciption, shortenText } from '../utils/Utils';
+import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {getLanguage} from "../utils/Settings";
+import { getLanguage } from '../utils/Settings';
+import { ArtworkModel } from '../models/ArtworkModel';
 
 export enum CardPlacementType {
     Explore,
     Search
 }
 
-export default function ExploreCard({item, handleCardPress, placementType}: {item: any, handleCardPress: () => void, placementType: CardPlacementType}) {
+export default function ExploreCard({item, handleCardPress, placementType}: {item: Partial<ArtworkModel>, handleCardPress: () => void, placementType: CardPlacementType}) {
     const router = useRouter();
     const [liked, setLiked] = useState<boolean>(false);
     const [favourited, setFavourited] = useState<boolean>(false);
@@ -58,17 +59,6 @@ export default function ExploreCard({item, handleCardPress, placementType}: {ite
     }
 
     useEffect(() => {
-        const translateLanguage = async () => {
-            const language = await getLanguage();
-            const disabledIds = ['id', 'title', 'artist_title', 'image_id'];
-
-
-        }
-
-        translateLanguage()
-    }, []);
-
-    useEffect(() => {
         loadLiked()
         loadFavourited()
     }, []);
@@ -81,7 +71,7 @@ export default function ExploreCard({item, handleCardPress, placementType}: {ite
                     if (ids.includes(String(item.id))) {
                         loadLiked();
                         loadFavourited();
-                        AsyncStorage.setItem('reload-explore-card', JSON.stringify(ids.filter(id => id != item.id)));
+                        AsyncStorage.setItem('reload-explore-card', JSON.stringify(ids.filter(id => id != String(item.id))));
                     }
                 })
         else if (placementType == CardPlacementType.Search)
@@ -91,7 +81,7 @@ export default function ExploreCard({item, handleCardPress, placementType}: {ite
                     if (ids.includes(String(item.id))) {
                         loadLiked();
                         loadFavourited();
-                        AsyncStorage.setItem('reload-search-card', JSON.stringify(ids.filter(id => id != item.id)));
+                        AsyncStorage.setItem('reload-search-card', JSON.stringify(ids.filter(id => id != String(item.id))));
                     }
                 })
     });
@@ -175,7 +165,7 @@ export default function ExploreCard({item, handleCardPress, placementType}: {ite
                 <LinearGradient
                     colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0)']}
                     style={{position: 'absolute', top: 0, left: 0, width: '100%', paddingTop: 10, paddingBottom: 12, paddingHorizontal: 16, borderTopLeftRadius: 10, borderTopRightRadius: 10}}>
-                    <Text style={{fontWeight: '600', color: 'white'}}>{shortenText(item.title, 35)}</Text>
+                    <Text style={{fontWeight: '600', color: 'white'}}>{shortenText(item.title ?? '', 35)}</Text>
                 </LinearGradient>
             </View>
             <View style={{flex: 1, flexDirection: 'row'}}>

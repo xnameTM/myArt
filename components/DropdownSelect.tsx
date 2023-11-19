@@ -1,9 +1,8 @@
-import {Alert, Pressable, StyleSheet, Text, useColorScheme, View} from "react-native";
-import {Ionicons} from "@expo/vector-icons";
+import { Alert, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React, {useEffect, useState} from "react";
-import Animated, {Easing, useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated";
-import {getLanguage} from "../utils/Settings";
+import React, { useEffect } from 'react';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 interface Props {
     filters: {name: string, key: string}[];
